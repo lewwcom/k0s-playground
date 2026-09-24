@@ -1,0 +1,13 @@
+quay.io/k0sproject/pause:3.10.2-0
+quay.io/k0sproject/apiserver-network-proxy-agent:v0.36.0-k0s.1
+quay.io/k0sproject/kube-proxy:v1.36.4
+quay.io/k0sproject/coredns:1.14.7-k0s.0
+quay.io/k0sproject/metrics-server:v0.9.0-k0s.1
+quay.io/k0sproject/pushgateway-ttl:1.4.0-k0s.3
+quay.io/k0sproject/cni-node:v1.9.1-k0s.1
+quay.io/k0sproject/kube-router:v2.10.0-iptables1.8.13-k0s.1
+quay.io/k0sproject/calico-cni:v3.32.1-3
+quay.io/k0sproject/calico-kube-controllers:v3.32.1-3
+quay.io/k0sproject/calico-node:v3.32.1-3
+quay.io/k0sproject/envoy-distroless:v1.39.1
+quay.io/k0sproject/traefik:v3.7.13-k0s.0

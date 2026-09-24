@@ -1,0 +1,53 @@
+global:
+  # imageRegistry: "harbor.example.com/docker.io"
+  imageRegistry: "docker.io"
+
+  # Kong-operator
+  webhooks:
+    options:
+      certManager:
+        enabled: true
+  certificateAuthority:
+    options:
+      certManager:
+        enabled: true
+
+# license: placeholder
+
+image:
+  repository: kong/kong-gateway
+  tag: "3.14"
+
+service:
+  http:
+    port: 80
+    nodePort: 30080
+
+dataplane:
+  env:
+    KONG_NGINX_ADMIN_SSL_VERIFY_CLIENT: "off"
+    KONG_REAL_IP_HEADER: "X-Forwarded-For"
+    KONG_TRUSTED_IPS: "10.0.0.0/8"
+    KONG_REAL_IP_RECURSIVE: "on"
+    KONG_UNTRUSTED_LUA: "lax"
+
+globalPlugins:
+  prometheus:
+    enabled: false
+  otel:
+    enabled: false
+
+kong-operator-chart:
+  image:
+    # repository: harbor.example.com/docker.io/kong/kong-operator
+    repository: docker.io/kong/kong-operator
+    tag: "2.1.3"
+  ko-crds:
+    keep: false
+  gwapi-standard-crds:
+    enabled: false
+  resources:
+    limits:
+      memory: 512Mi
+  enableControlplaneConfigDump: true
+

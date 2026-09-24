@@ -1,0 +1,10 @@
+{{ if $.Values.license }}
+apiVersion: configuration.konghq.com/v1alpha1
+kind: KongLicense
+metadata:
+  name: {{ include "common.names.fullname" . }}
+  labels:
+    {{- include "common.labels.standard" . | nindent 4 }}
+rawLicenseString: >- {{ $.Values.license | nindent 2 }}
+{{ end }}
+

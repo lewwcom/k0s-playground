@@ -1,0 +1,136 @@
+{{- define "syncpolicy" }}
+syncPolicy:
+  automated:
+    enabled: true
+    selfHeal: true
+    prune: true
+  syncOptions:
+    - CreateNamespace=true
+    - ServerSideApply=true
+{{- end }}
+{{- range $_, $project := .Values.projects }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: {{ $project.name }}
+  namespace: {{ $.Release.Namespace }}
+spec:
+  sourceRepos:
+    - '*'
+  destinations:
+    - namespace: '*'
+      server: '*'
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ $project.name }}-in-repo
+  namespace: {{ $.Release.Namespace }}
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - merge:
+        mergeKeys:
+          - values
+        generators:
+          - git:
+              repoURL: {{ $project.repoURL }}
+              revision: HEAD
+              pathParamPrefix: dir
+              directories:
+                - path: {{ $project.gitopsPath }}/in-repo/*
+              values:
+                appName: {{ "{{ .dir.path.basenameNormalized }}" | quote }}
+          - git:
+              repoURL: {{ $project.repoURL }}
+              revision: HEAD
+              pathParamPrefix: helmFile
+              files:
+                - path: {{ $project.gitopsPath }}/in-repo/*/Chart.yaml
+              values:
+                appName: {{ "{{ .helmFile.path.basenameNormalized }}" | quote }}
+
+  template:
+    metadata:
+      name: {{ "{{ .values.appName }}" | quote }}
+      labels: {{- include "k0s.labels" (dict "name" ("{{ .values.appName }}" | quote) "project" $project.name) | nindent 8 }}
+    spec:
+      project: {{ $project.name }}
+
+      destination:
+        name: in-cluster
+        namespace: {{ "{{ .values.appName }}" | quote }}
+
+      {{ include "syncpolicy" . | indent 6 }}
+
+  templatePatch: |
+    spec:
+      source:
+        repoURL: {{ $project.repoURL }}
+        targetRevision: HEAD
+        path: {{ "{{ .dir.path.path }}" | quote }}
+        {{ "{{- if hasKey . \"helmFile\" }}" }}
+        helm:
+          releaseName: {{ "{{ .values.appName }}" | quote }}
+        {{ "{{- else }}" }}
+        kustomize:
+          namespace: {{ "{{ .values.appName }}" | quote }}
+        {{ "{{- end }}" }}
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: {{ $project.name }}-external-helm
+  namespace: {{ $.Release.Namespace }}
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - git:
+              repoURL: {{ $project.repoURL }}
+              revision: HEAD
+              files:
+                - path: {{ $project.gitopsPath }}/external-helm/config.yaml
+          - list:
+              elementsYaml: {{ "{{ .apps | toJson }}" | quote }}
+
+  template:
+    metadata:
+      name: {{ "{{ .name }}" | quote }}
+      labels: {{- include "k0s.labels" (dict "name" ("{{ .name }}" | quote) "project" $project.name) | nindent 8 }}
+    spec:
+      project: {{ $project.name }}
+
+      destination:
+        name: in-cluster
+        namespace: {{ "{{ .name }}" | quote }}
+
+      {{ include "syncpolicy" . | indent 6 }}
+
+  templatePatch: |
+    spec:
+      sources:
+        - repoURL: {{ $project.repoURL }}
+          targetRevision: HEAD
+          ref: values
+
+        - repoURL: {{ "{{ .repo }}" }}
+          targetRevision: {{ "{{ .revision }}" }}
+          {{ "{{- if .chart }}" }}
+          chart: {{ "{{ .chart }}" }}
+          {{ "{{- end }}" }}
+          helm:
+            releaseName: {{ "{{ .name }}" }}
+            valueFiles:
+              - $values/{{ $project.gitopsPath }}/external-helm/{{ "{{ .values }}" }}
+
+{{ end -}}

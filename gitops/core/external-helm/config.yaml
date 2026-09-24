@@ -1,0 +1,8 @@
+apps:
+  - name: cert-manager
+    # repo: harbor.example.com/quay.io/jetstack/charts
+    repo: quay.io/jetstack/charts 
+    chart: cert-manager
+    revision: v1.20.2
+    values: cert-manager.values.yaml
+

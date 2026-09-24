@@ -1,0 +1,36 @@
+crds:
+  enabled: true
+  keep: false
+
+replicaCount: 2
+# imageRegistry: harbor.example.com/quay.io
+imageRegistry: quay.io
+imageNamespace: jetstack
+image:
+  name: cert-manager-controller
+  tag: &imageTag v1.20.2
+
+webhook:
+  replicaCount: 2
+  image:
+    name: cert-manager-webhook
+    tag: *imageTag
+
+cainjector:
+  replicaCount: 2
+  image:
+    name: cert-manager-cainjector
+    tag: *imageTag
+
+acmesolver:
+  image:
+    name: cert-manager-acmesolver
+    tag: *imageTag
+
+startupapicheck:
+  image:
+    name: cert-manager-startupapicheck
+    tag: *imageTag
+
+enableCertificateOwnerRef: true
+

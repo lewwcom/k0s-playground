@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "common.names.fullname" . }}-statusz
+  namespace: {{ .Release.Namespace }}
+spec:
+  type: ExternalName
+  externalName: 127.0.0.1
+
+---
+# Google z-pages convention, see: https://stackoverflow.com/a/43381061
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "common.names.fullname" . }}-statusz
+  namespace: {{ .Release.Namespace }}
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      namespace: {{ .Release.Namespace }}
+      name: {{ include "common.names.fullname" . }}
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /statusz
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /status
+      backendRefs:
+        - group: ''
+          kind: Service
+          name: {{ include "common.names.fullname" . }}-statusz
+          port: 8100
+          weight: 1
+

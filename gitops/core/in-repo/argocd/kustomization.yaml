@@ -1,0 +1,44 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argocd
+
+resources:
+  - namespace.yaml
+  - https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+  - httproute.yaml
+
+# images:
+#   - name: ghcr.io/dexidp/dex
+#     newName: harbor.example.com/ghcr.io/dexidp/dex
+#   - name: public.ecr.aws/docker/library/redis
+#     newName: harbor.example.com/public.ecr.aws/docker/library/redis
+#   - name: quay.io/argoproj/argocd
+#     newName: harbor.example.com/quay.io/argoproj/argocd
+
+patches:
+  # admin.password: password | bcrypt | base64
+  # admin.passwordMtime: date -d @0 -u +%FT%T%Z | base64
+  - patch: |
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: argocd-secret
+      data:
+        admin.password: JDJiJDEwJFlqL3dMb1ZVRmZPN1BiTWtDSGtmTXVOblBra3ZtVlZLdFRTVTFQUnFIS1d2enhVMFNmVndL
+        admin.passwordMtime: MTk3MC0wMS0wMVQwMDowMDowMFVUQw==
+  - patch: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-cmd-params-cm
+      data:
+        server.insecure: "true"
+  - patch: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-cm
+      data:
+        exec.enabled: "true"
+

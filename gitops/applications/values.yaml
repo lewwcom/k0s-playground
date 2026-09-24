@@ -1,0 +1,5 @@
+projects:
+  - name: core
+    repoURL: http://gogs.gogs.svc/gogs-admin/k0s.git
+    gitopsPath: gitops/core
+

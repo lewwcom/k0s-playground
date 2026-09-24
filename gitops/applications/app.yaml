@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-management
+  namespace: argocd
+spec:
+  project: default
+
+  source:
+    repoURL: http://gogs.gogs.svc/gogs-admin/k0s.git
+    targetRevision: HEAD
+    path: gitops/applications
+
+    helm:
+      releaseName: argocd-management
+
+  destination:
+    name: in-cluster
+    namespace: argocd
+
+  syncPolicy:
+    automated:
+      enabled: true
+      prune: true
+

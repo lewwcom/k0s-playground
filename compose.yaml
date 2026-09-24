@@ -1,0 +1,25 @@
+services:
+  k0s-controller:
+    container_name: k0s-controller
+    image: k0sproject/k0s:v1.36.4-k0s.1
+    command: ["k0s", "controller", "--enable-worker", "--no-taints"]
+    hostname: k0s-controller
+    network_mode: bridge # other modes are unsupported
+    ports:
+      - 6443:6443 # publish the Kubernetes API server port
+      - 30080:30080 # kong
+      - 30018:30018 # gogs
+    volumes:
+      - /var/lib/k0s # this is where k0s stores its data
+      - ./image-bundle.tar:/var/lib/k0s/images/image-bundle.tar # airgap image bundles
+      - /var/log/pods # this is where k0s stores pod logs
+      - /dev/kmsg:/dev/kmsg:ro # required by kubelets OOM watcher
+      - ./k0s.yaml:/etc/k0s/k0s.yaml
+    tmpfs:
+      - /run # this is where k0s stores runtime data
+    devices:
+      - /dev/kmsg # required by kubelet's OOM watcher
+    privileged: true
+    security_opt:
+      - seccomp:unconfined # allow access to the session keyring
+

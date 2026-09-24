@@ -1,0 +1,70 @@
+{{- if .Values.globalPlugins.prometheus.enabled }}
+apiVersion: configuration.konghq.com/v1
+kind: KongClusterPlugin
+metadata:
+  name: {{ include "common.names.fullname" . }}-prometheus
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    kubernetes.io/ingress.class: {{ include "common.names.fullname" . }}
+  labels:
+    {{- include "common.labels.standard" . | nindent 4 }}
+    global: "true"
+plugin: prometheus
+config:
+  status_code_metrics: true
+  latency_metrics: true
+  bandwidth_metrics: true
+  upstream_health_metrics: true
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: {{ include "common.names.fullname" . }}-dataplane-metrics
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "common.labels.standard" . | nindent 4 }}
+spec:
+  podMetricsEndpoints:
+    - targetPort: metrics
+  selector:
+    matchExpressions:
+      - key: app
+        operator: In
+        values: [{{ include "common.names.fullname" . | quote }}]
+      - key: gateway-operator.konghq.com/selector
+        operator: Exists
+
+{{ end -}}
+{{ if .Values.globalPlugins.otel.enabled -}}
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongClusterPlugin
+metadata:
+  name: {{ include "common.names.fullname" . }}-otel
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    kubernetes.io/ingress.class: {{ include "common.names.fullname" . }}
+  labels:
+    {{- include "common.labels.standard" . | nindent 4 }}
+    global: "true"
+plugin: opentelemetry
+config:
+  traces_endpoint: {{ .Values.globalPlugins.otel.tracesEndpoint | quote }}
+
+{{ end -}}
+---
+apiVersion: configuration.konghq.com/v1
+kind: KongClusterPlugin
+metadata:
+  name: {{ include "common.names.fullname" . }}-log
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    kubernetes.io/ingress.class: {{ include "common.names.fullname" . }}
+  labels:
+    {{- include "common.labels.standard" . | nindent 4 }}
+    global: "true"
+plugin: file-log
+config:
+  path: /dev/stdout
+

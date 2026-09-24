@@ -1,0 +1,16 @@
+apiVersion: v2
+name: kong
+description: A Helm chart for Kong on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "3.14"
+dependencies:
+  - name: kong-operator-chart
+    # repository: oci://harbor.example.com/docker.io/kong
+    repository: oci://docker.io/kong
+    version: 1.2.3
+  - name: common
+    # repository: oci://harbor.example.com/docker.io/bitnamicharts
+    repository: oci://docker.io/bitnamicharts
+    version: 2.38.0
+

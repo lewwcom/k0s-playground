@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: gogs
+spec:
+  serviceName: gogs
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gogs
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gogs
+    spec:
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: gogs
+          # image: harbor.example.com/ghcr.io/gogs/gogs:next-latest
+          image: ghcr.io/gogs/gogs:next-0.14.3
+          ports:
+            - name: http
+              containerPort: 3000
+          volumeMounts:
+            - name: config
+              subPath: gogs.ini
+              mountPath: /data/gogs/conf/app.ini
+            - name: data
+              mountPath: /data
+          livenessProbe: &probe
+            httpGet:
+              path: /healthcheck
+              port: 3000
+              scheme: HTTP
+          startupProbe:
+            <<: *probe
+            failureThreshold: 6
+      initContainers:
+        - name: init
+          # image: harbor.example.com/ghcr.io/gogs/gogs:next-latest
+          image: ghcr.io/gogs/gogs:next-0.14.3
+          command:
+            - bash
+            - -c
+            - |
+              /app/gogs/start.sh /app/gogs/gogs web &
+              until curl --noproxy localhost -o /dev/null -sS http://localhost:3000/healthcheck; do true; done
+              /app/gogs/gogs admin create-user --admin --name $ADMIN_USER --password $ADMIN_PASSWORD --email $ADMIN_USER@example.com || true
+          volumeMounts:
+            - name: config
+              subPath: gogs.ini
+              mountPath: /data/gogs/conf/app.ini
+            - name: data
+              mountPath: /data
+          envFrom:
+            - secretRef:
+                name: gogs-admin
+      volumes:
+        - name: config
+          configMap:
+            name: gogs
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        storageClassName: local-path
+        accessModes:
+          - ReadWriteOncePod
+        resources:
+          requests:
+            storage: 1Gi

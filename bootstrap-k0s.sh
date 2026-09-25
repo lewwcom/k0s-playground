@@ -65,9 +65,10 @@ main() {
 
     until make APP=kong wait-argocd-app; do :; done
     print-headline "Done!"
-    echo "You can access ArgoCD and Gogs at:"
+    echo "You can access ArgoCD, Gogs and Radar at:"
     echo "- ArgoCD: http://argocd.k0s.localhost:30080 (admin:password)"
     echo "- Gogs: http://gogs.k0s.localhost:30080 (gogs-admin:password)"
+    echo "- Radar: http://radar.k0s.localhost:30080"
 }
 
 print-headline() {

@@ -69,6 +69,8 @@ main() {
     echo "- ArgoCD: http://argocd.k0s.localhost:30080 (admin:password)"
     echo "- Gogs: http://gogs.k0s.localhost:30080 (gogs-admin:password)"
     echo "- Radar: http://radar.k0s.localhost:30080"
+    echo
+    echo 'To access the cluster with kubectl, `source activate.sh`'
 }
 
 print-headline() {

@@ -19,14 +19,19 @@ resources:
 patches:
   # admin.password: password | bcrypt | base64
   # admin.passwordMtime: date -d @0 -u +%FT%T%Z | base64
+  # Corresponding accounts.radar.tokens[0]:
+  #   jwt(algo=HS256, secret=argocd, payload={"iss":"argocd","sub":"radar:apiKey","iat":0,"jti":"bootstrap"}) =
+  #     eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhcmdvY2QiLCJzdWIiOiJyYWRhcjphcGlLZXkiLCJpYXQiOjAsImp0aSI6ImJvb3RzdHJhcCJ9.-KPX4pcIbrN7y-ToiJVfoB57k-hdEdCdkEP0fXRiaCM
   - patch: |
       apiVersion: v1
       kind: Secret
       metadata:
         name: argocd-secret
       data:
+        server.secretkey: YXJnb2Nk
         admin.password: JDJiJDEwJFlqL3dMb1ZVRmZPN1BiTWtDSGtmTXVOblBra3ZtVlZLdFRTVTFQUnFIS1d2enhVMFNmVndL
         admin.passwordMtime: MTk3MC0wMS0wMVQwMDowMDowMFVUQw==
+        accounts.radar.tokens: W3siaWQiOiJib290c3RyYXAiLCJpYXQiOjB9XQ==
   - patch: |
       apiVersion: v1
       kind: ConfigMap
@@ -41,4 +46,13 @@ patches:
         name: argocd-cm
       data:
         exec.enabled: "true"
+        accounts.radar: apiKey
+  - patch: |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-rbac-cm
+      data:
+        policy.csv: |
+          g, radar, role:readonly
 

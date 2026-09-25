@@ -6,3 +6,9 @@ apps:
     revision: v1.20.2
     values: cert-manager.values.yaml
 
+  - name: skyhook-radar
+    repo: https://skyhook-io.github.io/helm-charts
+    chart: radar
+    revision: 1.14.1
+    values: skyhook-radar.values.yaml
+

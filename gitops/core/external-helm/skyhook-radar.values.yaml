@@ -1,0 +1,55 @@
+image:
+  # repository: harbor.example.com/ghcr.io/skyhook-io/radar
+  repository: ghcr.io/skyhook-io/radar
+
+debug:
+  # image: harbor.example.com/docker.io/library/busybox:latest
+  image: docker.io/library/busybox:latest
+
+# RBAC configuration
+rbac:
+  create: true
+
+  # The options here add privileges to Radar's service account. `helm: true`
+  # grant read write permissions on `*`.
+  helm: true
+  secrets: true
+  viewRBAC: true
+  viewWebhooks: true
+  viewNodeRuntime: true
+  podExec: true
+  podLogs: true
+  portForward: true
+  selfUpgrade: false
+  traffic: true
+  metrics: true
+  crdGroups:
+    all: true
+
+httpRoute:
+  enabled: true
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: kong
+      namespace: kong
+  hostnames:
+    - radar.k0s.localhost
+    - radar.k0s.host.docker.internal
+
+auth:
+  # Authentication mode: "none" (default), "proxy", or "oidc"
+  mode: none
+
+
+mcp:
+  # Set to false to disable the MCP server (useful when deployed behind authentication)
+  enabled: false
+
+# TODO: OpenCost/Kubecost display configuration
+# cost:
+
+argocd:
+  url: http://argocd-server.argocd.svc
+  token: "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJhcmdvY2QiLCJzdWIiOiJyYWRhcjphcGlLZXkiLCJpYXQiOjAsImp0aSI6ImJvb3RzdHJhcCJ9.-KPX4pcIbrN7y-ToiJVfoB57k-hdEdCdkEP0fXRiaCM"
+

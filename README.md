@@ -4,8 +4,8 @@ Spins up a single-node [k0s](https://k0sproject.io/) Kubernetes cluster in
 Docker and bootstraps it with a GitOps stack:
 
 - [ArgoCD](https://argo-cd.readthedocs.io/) for continuous delivery;
-- [Gogs](https://gogs.io/) as an in-cluster Git remote that ArgoCD syncs from
-  and;
+- [Gogs](https://gogs.io/) as an in-cluster Git remote that ArgoCD syncs from;
+- [Radar](https://radarhq.io/) as K8s UI, and;
 - [Kong](https://konghq.com/) as the Gateway API ingress.
 
 All container images can be mirrored through the self-hosted Harbor registry
@@ -45,6 +45,7 @@ Once it finishes, the stack is reachable at:
 
 - ArgoCD: <http://argocd.k0s.localhost:30080> (`admin:password`)
 - Gogs: <http://gogs.k0s.localhost:30080> (`gogs-admin:password`)
+- Radar: <http://radar.k0s.localhost:30080>
 
 ## External compose integration
 

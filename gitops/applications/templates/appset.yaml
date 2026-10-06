@@ -45,6 +45,8 @@ spec:
               pathParamPrefix: dir
               directories:
                 - path: {{ $project.gitopsPath }}/in-repo/*
+                - path: {{ $project.gitopsPath }}/in-repo/nodeploy-*
+                  exclude: true
               values:
                 appName: {{ "{{ .dir.path.basenameNormalized }}" | quote }}
           - git:
@@ -112,7 +114,7 @@ spec:
 
       destination:
         name: in-cluster
-        namespace: {{ "{{ .name }}" | quote }}
+        namespace: {{ "{{ get . \"namespace\" | default .name }}" | quote }}
 
       {{ include "syncpolicy" . | indent 6 }}
 

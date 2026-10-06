@@ -14,7 +14,7 @@ rather than pulled from public registries.
 ## Prerequisites
 
 - Docker (with the `compose` plugin)
-- `make`, `curl`, `jq`, `kislyuk/yq`, `kubectl kustomize`
+- `make`, `curl`, `jq`, `kislyuk/yq`, `kubectl kustomize`, `helm`
 - [Optional, if use Harbor] A `.env` file with Harbor credentials (copy
   `.env.example` and fill in `HARBOR_USER` / `HARBOR_PASSWORD`)
 
@@ -34,8 +34,9 @@ mode it:
 2. Starts the `k0s-controller` container via `docker compose` (see
    `compose.yaml`, `k0s.yaml`).
 3. [Optional] Configures containerd to authenticate against Harbor.
-4. Applies the core kustomize apps directly: `gateway-api-crds`,
-   `local-path-provisioner`, `ArgoCD`, `Gogs`.
+4. Applies the core apps directly: `rook-ceph-operator`, `ceph-csi-drivers`,
+   `gateway-api-crds`, `ceph-cluster`, `ArgoCD` and `Gogs`.
+   (in simpler deployment, can use `local-path-provisioner` instead of ceph)
 5. Pushes this repository to the in-cluster Gogs instance and applies the ArgoCD
    app-of-apps (`gitops/applications`), which takes over deploying everything
    else (Kong, cert-manager, ...) - see
@@ -45,6 +46,7 @@ Once it finishes, the stack is reachable at:
 
 - ArgoCD: <http://argocd.k0s.localhost:30080> (`admin:password`)
 - Gogs: <http://gogs.k0s.localhost:30080> (`gogs-admin:password`)
+- Ceph: <http://ceph.k0s.localhost:30080> (`admin:password`)
 - Radar: <http://radar.k0s.localhost:30080>
 
 ## External compose integration
@@ -81,6 +83,21 @@ services:
     container_name: k0s-controller
     image: k0sproject/k0s:v1.31.14-k0s.0
     command: ["k0s", "controller", "--enable-worker", "--no-taints"]
+    post_start:
+      # Loop device for Ceph
+      - command:
+          - sh
+          - -c
+          - |
+            apk add eudev
+            pidof udevd || udevd --daemon
+            until pidof udevd; do :; done
+            [ -e /dev/loop99 ] || mknod /dev/loop99 b 7 99
+            fallocate -l 6G /vol/disk.raw
+            losetup -a | grep loop99 || losetup /dev/loop99 /vol/disk.raw
+            udevadm trigger --action=add --subsystem-match=block
+            udevadm settle
+        privileged: true
     hostname: k0s-controller
     network_mode: bridge
     ports:
@@ -93,6 +110,7 @@ services:
       - /var/log/pods
       - /dev/kmsg:/dev/kmsg:ro
       - ./k0s/k0s.yaml:/etc/k0s/k0s.yaml
+      - /vol
     tmpfs:
       - /run
     devices:

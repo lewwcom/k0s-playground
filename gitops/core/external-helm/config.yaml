@@ -1,4 +1,18 @@
 apps:
+  - name: rook-ceph-operator
+    namespace: rook-ceph
+    repo: https://charts.rook.io/release
+    chart: rook-ceph
+    revision: v1.20.8
+    values: rook-ceph-operator.values.yaml
+
+  - name: ceph-csi-drivers
+    namespace: rook-ceph
+    repo: https://ceph.github.io/ceph-csi-operator
+    chart: ceph-csi-drivers
+    revision: 1.0.4 # Should follow charts.rook.io/rook-ceph verison
+    values: ceph-csi-drivers.values.yaml
+
   - name: cert-manager
     # repo: harbor.example.com/quay.io/jetstack/charts
     repo: quay.io/jetstack/charts 

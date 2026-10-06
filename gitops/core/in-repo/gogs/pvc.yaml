@@ -3,7 +3,7 @@ kind: PersistentVolumeClaim
 metadata:
   name: gogs
 spec:
-  storageClassName: local-path
+  storageClassName: loop-rook-cephfs
   accessModes:
     - ReadWriteOncePod
   resources:

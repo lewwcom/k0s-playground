@@ -1,0 +1,34 @@
+operatorConfig:
+  namespace: rook-ceph
+  driverSpecDefaults:
+    imageSet:
+      name: rook-csi-operator-image-set-configmap
+    nodePlugin:
+      priorityClassName: system-node-critical
+      kubeletDirPath: "/var/lib/k0s/kubelet"
+    controllerPlugin:
+      priorityClassName: system-cluster-critical
+
+drivers:
+  rbd:
+    enabled: false # OrbStack doesn't include RDB module
+    # csi-provisioner-name convention: <operator-namespace>.<type>.csi.ceph.com
+    name: rook-ceph.rbd.csi.ceph.com
+    # Set snapshotPolicy to enable snapshot/group snapshot support.
+    # If unset/none, the csi-snapshotter sidecar is not deployed.
+    # Valid values: none, volumeSnapshot, volumeGroupSnapshot.
+    # snapshotPolicy: volumeSnapshot
+  cephfs:
+    enabled: true
+    # csi-provisioner-name convention: <operator-namespace>.<type>.csi.ceph.com
+    name: rook-ceph.cephfs.csi.ceph.com
+    # snapshotPolicy: volumeSnapshot
+  nfs:
+    enabled: false
+    # csi-provisioner-name convention: <operator-namespace>.<type>.csi.ceph.com
+    name: rook-ceph.nfs.csi.ceph.com
+  nvmeof:
+    enabled: false
+    # csi-provisioner-name convention: <operator-namespace>.<type>.csi.ceph.com
+    name: rook-ceph.nvmeof.csi.ceph.com
+

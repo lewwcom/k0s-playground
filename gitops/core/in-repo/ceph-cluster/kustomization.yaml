@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ceph-cluster
+
+resources:
+  - namespace.yaml
+  - https://raw.githubusercontent.com/rook/rook/master/deploy/examples/common-second-cluster.yaml
+  - cephcluster.yaml
+  - cephblockpool.yaml
+  - cephfilesystem.yaml
+  - httproute.yaml
+  - https://raw.githubusercontent.com/rook/rook/master/deploy/examples/toolbox.yaml
+
+patches:
+  - patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: rook-ceph-secondary
+
+  - patch: |-
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: loop-rook-cephfs
+      provisioner: rook-ceph.cephfs.csi.ceph.com
+      parameters:
+        clusterID: ceph-cluster
+        csi.storage.k8s.io/provisioner-secret-namespace: ceph-cluster
+        csi.storage.k8s.io/controller-expand-secret-namespace: ceph-cluster
+        csi.storage.k8s.io/controller-publish-secret-namespace: ceph-cluster
+        csi.storage.k8s.io/node-stage-secret-namespace: ceph-cluster
+
+  - patch: |-
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: rook-ceph-tools
+        namespace: rook-ceph
+      spec:
+        template:
+          spec:
+            containers:
+              - name: rook-ceph-tools
+                image: quay.io/ceph/ceph:v20
+

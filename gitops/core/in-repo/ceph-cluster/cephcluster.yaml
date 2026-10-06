@@ -1,0 +1,51 @@
+# https://github.com/rook/rook/blob/release-1.20/deploy/examples/cluster-test.yaml
+apiVersion: ceph.rook.io/v1
+kind: CephCluster
+metadata:
+  name: loop
+spec:
+  dataDirHostPath: /var/lib/rook/loop
+  cephVersion:
+    image: quay.io/ceph/ceph:v20
+    allowUnsupported: true
+  mon:
+    count: 1
+    allowMultiplePerNode: true
+  # test environments can skip ok-to-stop checks during upgrades
+  skipUpgradeChecks: true
+  mgr:
+    count: 1
+    allowMultiplePerNode: true
+  dashboard:
+    enabled: true
+  crashCollector:
+    disable: true
+  storage:
+    useAllNodes: true
+    useAllDevices: false
+    devices:
+      - name: loop99
+  healthCheck:
+    muteHealthWarning:
+      AUTH_INSECURE_ROTATING_SERVICE_KEY_TYPE:
+        policy: mute
+      AUTH_INSECURE_CLIENT_KEY_TYPE:
+        policy: mute
+      AUTH_INSECURE_KEYS_ALLOWED:
+        policy: mute
+      AUTH_INSECURE_KEYS_CREATABLE:
+        policy: mute
+  priorityClassNames:
+    all: system-node-critical
+    mgr: system-cluster-critical
+  disruptionManagement:
+    managePodBudgets: true
+  cephConfig:
+    global:
+      osd_pool_default_size: "1"
+      mon_warn_on_pool_no_redundancy: "false"
+      bluefs_buffered_io: "false"
+    client:
+      # tolerate ceph-fuse failures
+      client_reconnect_stale: "true"
+

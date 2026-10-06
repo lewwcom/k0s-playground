@@ -64,7 +64,7 @@ spec:
     - metadata:
         name: data
       spec:
-        storageClassName: local-path
+        storageClassName: loop-rook-cephfs
         accessModes:
           - ReadWriteOncePod
         resources:

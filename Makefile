@@ -88,6 +88,18 @@ wait-argocd-app: ## Wait for ArgoCD application to be ready (Usage: make APP=<ap
 destroy-k0s: ## Destroy k0s cluster
 	$(call print_headline,"Destroy k0s cluster")
 	$(dockerz) compose down --volumes
+# k0s-controller attaches loop99 to its backing file through a node (device
+# handle) it creates in its own private /dev. The node goes away with the
+# container, but the loop device stays attached in the kernel until it is
+# detached.
+#
+# Detaching with losetup needs a node for 7:99 in the /dev we run in, so
+# mount the host's /dev. On hosts where /dev is a devtmpfs (most Linux
+# systems), the kernel creates /dev/loop99 itself when the device is
+# attached, so mknod fails harmlessly. On OrbStack the node may not exist
+# there, so create it first.
+	$(dockerz) run --rm --privileged --volume /dev:/dev busybox \
+	sh -c "mknod /dev/loop99 b 7 99 || true; losetup -d /dev/loop99 || true; rm -f /dev/loop99"
 
 commit-to-gogs: ## Commit to Gogs
 	$(call print_headline,"Commit to Gogs")
@@ -96,4 +108,18 @@ commit-to-gogs: ## Commit to Gogs
 	$(gitz) push --force gogs master
 	$(gitz) reset --mixed HEAD~
 	@$(gitz_cleanup)
+
+set-ceph-dashboard-password: ## Set Ceph dashboard password to "password"
+	$(call print_headline,"Waiting for Ceph to be ready...")
+	until $(kubectlz) --namespace ceph-cluster get deploy rook-ceph-mgr-a > /dev/null 2>&1; do :; done
+	$(kubectlz) --namespace ceph-cluster rollout status deploy rook-ceph-mgr-a --timeout=15m
+	until $(kubectlz) --namespace ceph-cluster get deploy rook-ceph-tools > /dev/null 2>&1; do :; done
+	$(kubectlz) --namespace ceph-cluster rollout status deploy rook-ceph-tools --timeout=15m
+
+	$(call print_headline,"Setting Ceph dashboard password to 'password'...")
+	until \
+	$(kubectlz) --namespace ceph-cluster exec deploy/rook-ceph-tools -- \
+	sh -c "echo -n password > /tmp/cdwp && \
+	ceph dashboard ac-user-set-password admin --force-password -i /tmp/cdwp"; \
+	do :; done
 

@@ -51,23 +51,55 @@ main() {
     # TODO: Self-host Harbor
     # add-harbor-auth
 
-    # Deploy kustomize apps
-    local core_apps=("gateway-api-crds" "local-path-provisioner" "ArgoCD" "Gogs")
+    # Wait for loop device
+    dockerz exec k0s-controller sh -c '
+        until losetup -a | grep loop99; do :; done
+    '
+
+    # Deploy core apps
+    local core_apps=("rook-ceph-operator" "ceph-csi-drivers")
+    local app; for app in "${core_apps[@]}"; do
+        local namespace;
+        namespace="$(
+            yq --raw-output --arg name $app \
+                '.apps[] | select(.name == $name) | .namespace // .name' \
+                gitops/core/external-helm/config.yaml
+        )"
+
+        kubectl create namespace $namespace --dry-run=client --output=yaml |
+            kubectlz-apply
+        eval "$(
+            yq --raw-output --arg name $app --arg namespace $namespace '
+                .apps[]
+                | select(.name == $name)
+                | (
+                    if (.repo | test("^https?://")) then "\(.chart) --repo \(.repo)"
+                    else "oci://\(.repo)/\(.chart)" end
+                ) as $chart
+                | "helm template \(.name) \($chart) --version \(.revision) --values gitops/core/external-helm/\(.values) --namespace \($namespace)"' \
+                gitops/core/external-helm/config.yaml
+        )" | kubectlz-apply --namespace $namespace
+    done
+
+    core_apps=("gateway-api-crds" "ceph-cluster" "ArgoCD" "Gogs")
     local app; for app in "${core_apps[@]}"; do
         print-headline "Deploy $app"
         local app_path=${app,,}
         kubectl kustomize gitops/core/in-repo/$app_path/ | kubectlz-apply
     done
 
+    make set-ceph-dashboard-password
+    kubectlz --namespace rook-ceph rollout restart deploy rook-ceph.cephfs.csi.ceph.com-ctrlplugin
     make set-up-gogs-repo
     make commit-to-gogs
     cat gitops/applications/app.yaml | kubectlz-apply
 
     until make APP=kong wait-argocd-app; do :; done
     print-headline "Done!"
-    echo "You can access ArgoCD, Gogs and Radar at:"
+    echo "You can access ArgoCD, Gogs, Ceph and Radar at:"
     echo "- ArgoCD: http://argocd.k0s.localhost:30080 (admin:password)"
     echo "- Gogs: http://gogs.k0s.localhost:30080 (gogs-admin:password)"
+    echo "- Ceph: http://ceph.k0s.localhost:30080 (admin:password)"
     echo "- Radar: http://radar.k0s.localhost:30080"
     echo
     echo 'To access the cluster with kubectl, `source activate.sh`'
@@ -90,14 +122,14 @@ kubectlz() {
 kubectlz-apply() {
     local manifest=$(mktemp)
     tee $manifest > /dev/null
-    if cat $manifest | kubectlz apply --server-side --force-conflicts --filename -; then
+    if cat $manifest | kubectlz apply --server-side --force-conflicts --filename - "$@"; then
         rm $manifest
         return
     fi
     local i; for i in {1..5}; do
         echo "Wait ${i}s..."
         sleep $i
-        if cat $manifest | kubectlz apply --server-side --force-conflicts --filename -; then
+        if cat $manifest | kubectlz apply --server-side --force-conflicts --filename - "$@"; then
             rm $manifest
             return
         fi

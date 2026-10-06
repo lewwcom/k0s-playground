@@ -3,6 +3,29 @@ services:
     container_name: k0s-controller
     image: k0sproject/k0s:v1.36.4-k0s.1
     command: ["k0s", "controller", "--enable-worker", "--no-taints"]
+    post_start:
+      # Loop device for Ceph. OrbStack's VM has no udevd, and ceph-volume reads
+      # /run/udev/data/* for every block device, so we run our own eudev and
+      # rebuild the db on each start (/run is tmpfs).
+      #
+      # On a real Linux host, consider removing this hook: the host's udevd
+      # already provides the db. If kept, expect small side effects: the
+      # container's udevd also receives the host's kernel uevents and its
+      # default rules may touch shared state (e.g. kmod load, sysfs writes).
+      # Don't mount the host's /dev, /run/udev or /lib/modules in this case.
+      - command:
+          - sh
+          - -c
+          - |
+            apk add eudev
+            pidof udevd || udevd --daemon
+            until pidof udevd; do :; done
+            [ -e /dev/loop99 ] || mknod /dev/loop99 b 7 99
+            fallocate -l 6G /vol/disk.raw
+            losetup -a | grep loop99 || losetup /dev/loop99 /vol/disk.raw
+            udevadm trigger --action=add --subsystem-match=block
+            udevadm settle
+        privileged: true
     hostname: k0s-controller
     network_mode: bridge # other modes are unsupported
     ports:
@@ -15,6 +38,7 @@ services:
       - /var/log/pods # this is where k0s stores pod logs
       - /dev/kmsg:/dev/kmsg:ro # required by kubelets OOM watcher
       - ./k0s.yaml:/etc/k0s/k0s.yaml
+      - /vol
     tmpfs:
       - /run # this is where k0s stores runtime data
     devices:

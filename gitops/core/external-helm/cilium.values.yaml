@@ -1,0 +1,10 @@
+kubeProxyReplacement: "true"
+k8sServiceHost: host.docker.internal
+k8sServicePort: 6443
+
+operator:
+  replicas: 1
+
+# For multi-nodes cluster, enable transparent encryption.
+# See: https://docs.cilium.io/en/stable/security/network/encryption/
+

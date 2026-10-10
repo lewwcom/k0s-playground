@@ -3,8 +3,15 @@ kind: ClusterConfig
 metadata:
   name: k0s
 spec:
+  api:
+    sans:
+      - host.docker.internal
   telemetry:
     enabled: false
   images:
     default_pull_policy: Never
+  network:
+    provider: custom
+    kubeProxy:
+      disabled: true
 

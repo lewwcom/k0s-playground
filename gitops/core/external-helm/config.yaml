@@ -1,4 +1,11 @@
 apps:
+  - name: cilium
+    namespace: kube-system
+    repo: quay.io/cilium/charts
+    chart: cilium
+    revision: 1.20.2
+    values: cilium.values.yaml
+
   - name: rook-ceph-operator
     namespace: rook-ceph
     repo: https://charts.rook.io/release

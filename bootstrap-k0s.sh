@@ -57,6 +57,8 @@ main() {
     '
 
     # Deploy core apps
+    deploy-cilium
+
     local core_apps=("rook-ceph-operator" "ceph-csi-drivers")
     local app; for app in "${core_apps[@]}"; do
         local namespace;
@@ -68,17 +70,8 @@ main() {
 
         kubectl create namespace $namespace --dry-run=client --output=yaml |
             kubectlz-apply
-        eval "$(
-            yq --raw-output --arg name $app --arg namespace $namespace '
-                .apps[]
-                | select(.name == $name)
-                | (
-                    if (.repo | test("^https?://")) then "\(.chart) --repo \(.repo)"
-                    else "oci://\(.repo)/\(.chart)" end
-                ) as $chart
-                | "helm template \(.name) \($chart) --version \(.revision) --values gitops/core/external-helm/\(.values) --namespace \($namespace)"' \
-                gitops/core/external-helm/config.yaml
-        )" | kubectlz-apply --namespace $namespace
+        make --no-print-directory APP=$app helm-template |
+            kubectlz-apply --namespace $namespace
     done
 
     core_apps=("gateway-api-crds" "ceph-cluster" "ArgoCD" "Gogs")
@@ -173,6 +166,32 @@ skip_verify = true
 [host.\"https://harbor.example.com\".header]
 authorization = \"Basic $(echo -n "$HARBOR_USER:$HARBOR_PASSWORD" | base64)\"
 " | dockerz exec --interactive k0s-controller tee /etc/k0s/containerd.d/certs.d/harbor.example.com/hosts.toml > /dev/null
+}
+
+deploy-cilium() {
+    # Download Cilium CLI
+    if ! [ -f cilium ]; then
+        local version=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
+        local arch=amd64
+        if [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]; then arch=arm64; fi
+        local os=linux
+        if [ "$(uname -o)" = "Darwin" ]; then os=darwin; fi
+
+        curl -L --fail --output cilium.tar.gz \
+            https://github.com/cilium/cilium-cli/releases/download/${version}/cilium-${os}-${arch}.tar.gz
+        tar xzvf cilium.tar.gz
+        rm cilium.tar.gz
+    fi
+
+    # Deploy Cilium
+    make --no-print-directory APP=cilium helm-template |
+        yq --raw-output 'select(.metadata.namespace != "cilium-secrets")' |
+        kubectlz-apply --namespace kube-system
+    make --no-print-directory APP=cilium helm-template |
+        yq --raw-output 'select(.metadata.namespace == "cilium-secrets")' |
+        kubectlz-apply --namespace cilium-secrets
+    make --no-print-directory gen-kubeconfig > kubeconfig.tmp
+    ./cilium --kubeconfig kubeconfig.tmp status --wait
 }
 
 main "$@"

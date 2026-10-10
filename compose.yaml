@@ -26,6 +26,10 @@ services:
             udevadm trigger --action=add --subsystem-match=block
             udevadm settle
         privileged: true
+      # Cilium needs various mountpoints to be shared
+      # (https://lwn.net/Articles/689856/)
+      - command: mount --make-rshared /
+        privileged: true
     hostname: k0s-controller
     network_mode: bridge # other modes are unsupported
     ports:

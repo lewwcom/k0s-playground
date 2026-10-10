@@ -123,3 +123,22 @@ set-ceph-dashboard-password: ## Set Ceph dashboard password to "password"
 	ceph dashboard ac-user-set-password admin --force-password -i /tmp/cdwp"; \
 	do :; done
 
+define HELM_TEMPLATE_CMD
+yq --raw-output --arg name $(APP) ' \
+	.apps[] \
+	| select(.name == $$name) \
+	| .namespace = (.namespace // .name) \
+	| ( \
+		if (.repo | test("^https?://")) then "\(.chart) --repo \(.repo)" \
+		else "oci://\(.repo)/\(.chart)" end \
+	) as $$chart \
+	| "helm template \(.name) \($$chart) \
+		--version \(.revision) \
+		--values gitops/core/external-helm/\(.values) \
+		--namespace \(.namespace) \
+	"' \
+	gitops/core/external-helm/config.yaml
+endef
+helm-template: ## Generate manifests of external-helm app (Usage: make APP=<app> helm-template)
+	@$(shell $(HELM_TEMPLATE_CMD))
+

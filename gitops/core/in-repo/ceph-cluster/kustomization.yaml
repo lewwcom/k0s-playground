@@ -5,12 +5,12 @@ namespace: ceph-cluster
 
 resources:
   - namespace.yaml
-  - https://raw.githubusercontent.com/rook/rook/master/deploy/examples/common-second-cluster.yaml
+  - https://raw.githubusercontent.com/rook/rook/v1.20.8/deploy/examples/common-second-cluster.yaml
   - cephcluster.yaml
   - cephblockpool.yaml
   - cephfilesystem.yaml
   - httproute.yaml
-  - https://raw.githubusercontent.com/rook/rook/master/deploy/examples/toolbox.yaml
+  - https://raw.githubusercontent.com/rook/rook/v1.20.8/deploy/examples/toolbox.yaml
 
 patches:
   - patch: |-

@@ -21,6 +21,9 @@ rather than pulled from public registries.
 ## Quick start
 
 ```bash
+# Setup git hooks
+git config core.hooksPath .githooks
+
 cp .env.example .env   # [Optional] fill in HARBOR_USER / HARBOR_PASSWORD
 ./bootstrap-k0s.sh
 ```

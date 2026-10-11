@@ -1,0 +1,9 @@
+dependencies:
+- name: kong-operator-chart
+  repository: oci://docker.io/kong
+  version: 1.2.3
+- name: common
+  repository: oci://docker.io/bitnamicharts
+  version: 2.38.0
+digest: sha256:2a2ffa2414c5e9f0ada893b6a393521df2418f56face24c6f928fc4321e2533f
+generated: "2026-10-10T17:49:24.808418+07:00"

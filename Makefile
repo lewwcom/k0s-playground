@@ -104,7 +104,7 @@ destroy-k0s: ## Destroy k0s cluster
 commit-to-gogs: ## Commit to Gogs
 	$(call print_headline,"Commit to Gogs")
 	$(gitz) add .
-	$(gitz) commit --message "Commit to Gogs" --allow-empty
+	$(gitz) commit --message "Commit to Gogs" --allow-empty --no-verify
 	$(gitz) push --force gogs master
 	$(gitz) reset --mixed HEAD~
 	@$(gitz_cleanup)

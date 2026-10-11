@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+./list-images.sh > airgap-images.txt
+git add airgap-images.txt
+find gitops/*/in-repo -name Chart.lock | xargs -n1 git add
+

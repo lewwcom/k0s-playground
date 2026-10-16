@@ -34,7 +34,7 @@ services:
     network_mode: bridge # other modes are unsupported
     ports:
       - 6443:6443 # publish the Kubernetes API server port
-      - 30080:30080 # kong
+      - 30080:30080 # HTTP ingress 
       - 30018:30018 # gogs
     volumes:
       - /var/lib/k0s # this is where k0s stores its data

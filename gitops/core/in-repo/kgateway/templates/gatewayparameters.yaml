@@ -1,0 +1,17 @@
+apiVersion: gateway.kgateway.dev/v1alpha1
+kind: GatewayParameters
+metadata:
+  name: {{ include "common.names.fullname" . }}-proxy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "common.labels.standard" . | nindent 4 }}
+spec:
+  kube:
+    envoyContainer:
+      image: {{- .Values.image | toYamlPretty | nindent 8 }}
+    service:
+      type: NodePort
+      ports:
+        - port: {{ .Values.service.http.port }}
+          nodePort: {{ .Values.service.http.nodePort }}
+

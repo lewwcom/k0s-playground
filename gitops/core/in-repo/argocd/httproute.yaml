@@ -6,8 +6,8 @@ spec:
   parentRefs:
     - group: gateway.networking.k8s.io
       kind: Gateway
-      name: kong
-      namespace: kong
+      name: kgateway-proxy 
+      namespace: kgateway
   hostnames:
     - argocd.k0s.localhost
     - argocd.k0s.host.docker.internal

@@ -1,0 +1,17 @@
+image:
+  registry: cr.kgateway.dev
+  repository: kgateway-dev/envoy-wrapper
+
+service:
+  http:
+    port: 80
+    nodePort: 30080
+
+kgateway:
+  image:
+    registry: "cr.kgateway.dev/kgateway-dev"
+
+  controller:
+    image:
+      repository: "kgateway"
+

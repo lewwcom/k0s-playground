@@ -6,7 +6,7 @@ Docker and bootstraps it with a GitOps stack:
 - [ArgoCD](https://argo-cd.readthedocs.io/) for continuous delivery;
 - [Gogs](https://gogs.io/) as an in-cluster Git remote that ArgoCD syncs from;
 - [Radar](https://radarhq.io/) as K8s UI, and;
-- [Kong](https://konghq.com/) as the Gateway API ingress.
+- [Kgateway](https://kgateway.dev/) as the Gateway API ingress.
 
 All container images can be mirrored through the self-hosted Harbor registry
 rather than pulled from public registries.
@@ -42,7 +42,7 @@ mode it:
    (in simpler deployment, can use `local-path-provisioner` instead of ceph)
 5. Pushes this repository to the in-cluster Gogs instance and applies the ArgoCD
    app-of-apps (`gitops/applications`), which takes over deploying everything
-   else (Kong, cert-manager, ...) - see
+   else (cert-manager, ...) - see
    [`gitops/applications/README.md`](gitops/applications/README.md).
 
 Once it finishes, the stack is reachable at:
@@ -105,7 +105,7 @@ services:
     network_mode: bridge
     ports:
       - 6443:6443   # Kubernetes API
-      - 30080:30080 # Kong
+      - 30080:30080 # HTTP ingress
       - 30018:30018 # Gogs
     volumes:
       - /var/lib/k0s

@@ -1,0 +1,12 @@
+dependencies:
+- name: kgateway-crds
+  repository: oci://cr.kgateway.dev/kgateway-dev/charts
+  version: v2.4.3
+- name: kgateway
+  repository: oci://cr.kgateway.dev/kgateway-dev/charts
+  version: v2.4.3
+- name: common
+  repository: oci://docker.io/bitnamicharts
+  version: 2.38.0
+digest: sha256:ff7a751a85ccdaa615eed0c43d69651ac718836a9fb05f54feb330544ae2fc26
+generated: "2026-10-15T23:59:58.700198+07:00"

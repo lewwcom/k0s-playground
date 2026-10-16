@@ -87,7 +87,7 @@ main() {
     make commit-to-gogs
     cat gitops/applications/app.yaml | kubectlz-apply
 
-    until make APP=kong wait-argocd-app; do :; done
+    until make APP=kgateway wait-argocd-app; do :; done
     print-headline "Done!"
     echo "You can access ArgoCD, Gogs, Ceph and Radar at:"
     echo "- ArgoCD: http://argocd.k0s.localhost:30080 (admin:password)"

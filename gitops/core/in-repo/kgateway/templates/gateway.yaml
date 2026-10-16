@@ -1,0 +1,22 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ include "common.names.fullname" . }}-proxy
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "common.labels.standard" . | nindent 4 }}
+spec:
+  gatewayClassName: kgateway
+  infrastructure:
+    parametersRef:
+      group: gateway.kgateway.dev
+      kind: GatewayParameters
+      name: {{ include "common.names.fullname" . }}-proxy
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: {{ .Values.service.http.port }}
+      allowedRoutes:
+        namespaces:
+          from: All
+

@@ -1,0 +1,20 @@
+apiVersion: v2
+name: kgateway
+description: A Helm chart for kgateway on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "2.4.3"
+dependencies:
+  - name: kgateway-crds
+    # repository: oci://harbor.example.com/cr.kgateway.dev/kgateway-dev/charts
+    repository: oci://cr.kgateway.dev/kgateway-dev/charts
+    version: &kgateway-version v2.4.3
+  - name: kgateway
+    # repository: oci://harbor.example.com/cr.kgateway.dev/kgateway-dev/charts
+    repository: oci://cr.kgateway.dev/kgateway-dev/charts
+    version: *kgateway-version
+  - name: common
+    # repository: oci://harbor.example.com/docker.io/bitnamicharts
+    repository: oci://docker.io/bitnamicharts
+    version: 2.38.0
+

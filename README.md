@@ -14,9 +14,21 @@ rather than pulled from public registries.
 ## Prerequisites
 
 - Docker (with the `compose` plugin)
-- `make`, `curl`, `jq`, `kislyuk/yq`, `kubectl kustomize`, `helm`
+- `make`, `curl`, `jq`, `kislyuk/yq`, `kubectl kustomize`, `helm` (or run
+  `nix develop`)
+- [Optional] `step-cli` to trust `step-ca`'s root certificate on the host
+  (install on the host or run `nix develop`)
 - [Optional, if use Harbor] A `.env` file with Harbor credentials (copy
   `.env.example` and fill in `HARBOR_USER` / `HARBOR_PASSWORD`)
+
+> [!note]
+>
+> On WSL, install `step-cli` on the Windows host rather than inside the Linux
+> VM. `make trust-ca` and `make destroy-k0s` prefer `step.exe` via [WSL
+> interop](https://learn.microsoft.com/en-us/windows/dev-environment/wsl-interop#path-translation)
+> (using [`wslpath`](https://learn.microsoft.com/en-us/windows/wsl/release-notes#wsl-34)
+> for path translation) so the certificate is installed into the Windows trust
+> store used by host browsers.
 
 ## Quick start
 
@@ -34,8 +46,8 @@ mode it:
 1. Mirrors the k0s core images listed in `airgap-images.txt` into an airgap
    bundle (`image-bundle.tar`). Set `USE_SUDO=1` if docker requires sudo in your
    environment.
-2. Starts the `k0s-controller` container via `docker compose` (see
-   `compose.yaml`, `k0s.yaml`).
+2. Starts the `k0s-controller` and `step-ca` containers via `docker compose`
+   (see `compose.yaml`, `k0s.yaml`).
 3. [Optional] Configures containerd to authenticate against Harbor.
 4. Applies the core apps directly: `rook-ceph-operator`, `ceph-csi-drivers`,
    `gateway-api-crds`, `ceph-cluster`, `ArgoCD` and `Gogs`.
@@ -44,13 +56,15 @@ mode it:
    app-of-apps (`gitops/applications`), which takes over deploying everything
    else (cert-manager, ...) - see
    [`gitops/applications/README.md`](gitops/applications/README.md).
+6. [Optional] If `step-cli` is available, installs `step-ca`'s root certificate
+   into the host trust store (`make trust-ca`).
 
 Once it finishes, the stack is reachable at:
 
-- ArgoCD: <http://argocd.k0s.localhost:30080> (`admin:password`)
-- Gogs: <http://gogs.k0s.localhost:30080> (`gogs-admin:password`)
-- Ceph: <http://ceph.k0s.localhost:30080> (`admin:password`)
-- Radar: <http://radar.k0s.localhost:30080>
+- ArgoCD: <https://argocd.k0s.localhost:30443> or <http://argocd.k0s.localhost:30080> (`admin:password`)
+- Gogs: <https://gogs.k0s.localhost:30443> or <http://gogs.k0s.localhost:30080> (`gogs-admin:password`)
+- Ceph: <https://ceph.k0s.localhost:30443> or <http://ceph.k0s.localhost:30080> (`admin:password`)
+- Radar: <https://radar.k0s.localhost:30443> or <http://radar.k0s.localhost:30080>
 
 ## External compose integration
 
@@ -122,6 +136,37 @@ services:
     security_opt:
       - seccomp:unconfined
 
+  step-ca:
+    container_name: step-ca
+    image: smallstep/step-ca:0.29.0
+    command:
+      - /usr/local/bin/step-ca
+      - --acme-http-port=30080
+      - --insecure
+      - --password-file=/home/step/secrets/password
+      - /home/step/config/ca.json
+    network_mode: bridge
+    ports:
+      - 9000:9000
+    environment:
+      DOCKER_STEPCA_INIT_NAME: "k0s Local CA"
+      DOCKER_STEPCA_INIT_DNS_NAMES: "localhost,host.docker.internal,step-ca"
+      DOCKER_STEPCA_INIT_ACME: "true"
+    extra_hosts:
+      - "argocd.k0s.localhost:host-gateway"
+      - "ceph.k0s.localhost:host-gateway"
+      - "gogs.k0s.localhost:host-gateway"
+      - "nexus.k0s.localhost:host-gateway"
+      - "radar.k0s.localhost:host-gateway"
+
+      - "argocd.k0s.host.docker.internal:host-gateway"
+      - "ceph.k0s.host.docker.internal:host-gateway"
+      - "gogs.k0s.host.docker.internal:host-gateway"
+      - "nexus.k0s.host.docker.internal:host-gateway"
+      - "radar.k0s.host.docker.internal:host-gateway"
+    volumes:
+      - /home/step
+
   k0s-controller-bootstrap:
     # Any image with bash, git, make, kubectl and docker CLI
     image: nixery.dev/[arm64/]shell/gnumake/docker-client/kubectl
@@ -155,6 +200,8 @@ Key points:
 
 - `k0s-controller` uses `network_mode: bridge`; its ports are exposed on the
   Docker host and reachable from other containers via `host.docker.internal`.
+- `step-ca` runs on port 9000 in bridge network mode, providing the local ACME
+  directory for cert-manager to automatically issue TLS certificates.
 - `k0s-controller-bootstrap` passes `config-cluster-only` because `docker
   compose up` is handled by the parent stack — the script only configures the
   already-running cluster.
@@ -168,7 +215,8 @@ Key points:
 
 ```plaintext
 bootstrap-k0s.sh   Bootstraps the cluster end-to-end (see --help)
-compose.yaml       Docker Compose definition for the k0s-controller container
+compose.yaml       Docker Compose definition for k0s-controller and step-ca
+flake.nix          Nix flake devShell
 k0s.yaml           k0s ClusterConfig mounted into the controller
 airgap-images.txt  k0s core images mirrored (from Harbor, probably) before cluster start
 Makefile           Helper targets used by bootstrap-k0s.sh and for day-to-day use

@@ -35,6 +35,7 @@ services:
     ports:
       - 6443:6443 # publish the Kubernetes API server port
       - 30080:30080 # HTTP ingress 
+      - 30443:30443 # HTTPS ingress
       - 30018:30018 # gogs
     volumes:
       - /var/lib/k0s # this is where k0s stores its data
@@ -50,4 +51,35 @@ services:
     privileged: true
     security_opt:
       - seccomp:unconfined # allow access to the session keyring
+
+  step-ca:
+    container_name: step-ca
+    image: smallstep/step-ca:0.29.0
+    command:
+      - /usr/local/bin/step-ca
+      # validate ACME HTTP-01 challenges on port 30080
+      - --acme-http-port=30080
+      # --insecure is required to unlock --acme-http-port
+      - --insecure
+      - --password-file=/home/step/secrets/password
+      - /home/step/config/ca.json
+    network_mode: bridge
+    ports:
+      - 9000:9000
+    environment:
+      DOCKER_STEPCA_INIT_NAME: "k0s Local CA"
+      # SANs for step-ca's own HTTPS server cert
+      DOCKER_STEPCA_INIT_DNS_NAMES: "localhost,host.docker.internal,step-ca"
+      DOCKER_STEPCA_INIT_ACME: "true"
+    extra_hosts:
+      - "argocd.k0s.localhost:host-gateway"
+      - "ceph.k0s.localhost:host-gateway"
+      - "gogs.k0s.localhost:host-gateway"
+      - "radar.k0s.localhost:host-gateway"
+      - "argocd.k0s.host.docker.internal:host-gateway"
+      - "ceph.k0s.host.docker.internal:host-gateway"
+      - "gogs.k0s.host.docker.internal:host-gateway"
+      - "radar.k0s.host.docker.internal:host-gateway"
+    volumes:
+      - /home/step
 

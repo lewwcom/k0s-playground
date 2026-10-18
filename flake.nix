@@ -1,0 +1,54 @@
+{
+  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0";
+
+  outputs =
+    { self, ... }@inputs:
+    let
+      inherit (inputs.nixpkgs) lib;
+
+      forEachSystem =
+        f:
+        lib.genAttrs lib.systems.flakeExposed (
+          system:
+          f {
+            inherit system;
+            pkgs = import inputs.nixpkgs {
+              inherit system;
+              config.allowUnfree = true;
+            };
+          }
+        );
+    in
+    {
+      devShells = forEachSystem (
+        { pkgs, system }:
+        {
+          default = pkgs.mkShellNoCC {
+            name = "k0s";
+
+            packages = with pkgs; [
+              self.formatter.${system}
+              cilium-cli
+              curl
+              jq
+              kubectl
+              kubernetes-helm
+              step-cli
+              yq
+            ];
+
+            shellHook = ''
+              ln -sf "${pkgs.cilium-cli}/bin/cilium" cilium
+              mkdir -p $PWD/.local
+              export STEPPATH="$PWD/.local/step"
+              if make gen-kubeconfig &> /dev/null; then
+                . activate.sh > /dev/null 2>&1
+              fi
+            '';
+          };
+        }
+      );
+
+      formatter = forEachSystem ({ pkgs, ... }: pkgs.nixfmt-tree);
+    };
+}

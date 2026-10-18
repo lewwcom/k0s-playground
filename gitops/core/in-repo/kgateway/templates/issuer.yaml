@@ -1,0 +1,21 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "common.names.fullname" . }}-acme
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "common.labels.standard" . | nindent 4 }}
+spec:
+  acme:
+    server: {{ .Values.tls.acmeServer }}
+    skipTLSVerify: true
+    privateKeySecretRef:
+      name: {{ include "common.names.fullname" . }}-acme-account-key
+    solvers:
+      - http01:
+          gatewayHTTPRoute:
+            parentRefs:
+              - group: gateway.networking.k8s.io
+                kind: Gateway
+                name: {{ include "common.names.fullname" . }}-proxy
+                namespace: {{ .Release.Namespace }}

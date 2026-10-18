@@ -30,6 +30,13 @@ gitz_cleanup = $(if ${USE_SUDO},sudo chown -R $(GITDIR_OWNER) "$(GITDIR)",)
 
 dockerz = $(if ${USE_SUDO},sudo docker,docker)
 kubectlz = $(dockerz) exec --interactive k0s-controller k0s kubectl "$$@"
+ifneq ($(shell command -v step.exe 2> /dev/null),)
+stepz = step.exe
+linux_step_path = $$(wslpath -u "$$(step.exe path)")
+else
+stepz = step
+linux_step_path = $$(step path)
+endif
 
 # Ref: https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 # Define target with help: <target>: <dep> ## <description>
@@ -87,6 +94,9 @@ wait-argocd-app: ## Wait for ArgoCD application to be ready (Usage: make APP=<ap
 
 destroy-k0s: ## Destroy k0s cluster
 	$(call print_headline,"Destroy k0s cluster")
+	if command -v $(stepz) > /dev/null 2>&1 && [ -f "$(linux_step_path)/certs/root_ca.crt" ]; then \
+		$(stepz) certificate uninstall "$$($(stepz) path)/certs/root_ca.crt" || true; \
+	fi
 	$(dockerz) compose down --volumes
 # k0s-controller attaches loop99 to its backing file through a node (device
 # handle) it creates in its own private /dev. The node goes away with the
@@ -141,4 +151,12 @@ yq --raw-output --arg name $(APP) ' \
 endef
 helm-template: ## Generate manifests of external-helm app (Usage: make APP=<app> helm-template)
 	@$(shell $(HELM_TEMPLATE_CMD))
+
+trust-ca: ## Install step-ca root certificate into the host trust store
+	$(call print_headline,"Trusting step-ca root certificate on host...")
+	$(stepz) ca bootstrap \
+	--force \
+	--ca-url https://${K0S_HOST}:9000 \
+	--fingerprint "$$($(dockerz) exec step-ca step certificate fingerprint /home/step/certs/root_ca.crt)" \
+	--install
 

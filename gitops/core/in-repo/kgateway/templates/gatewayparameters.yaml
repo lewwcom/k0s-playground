@@ -14,4 +14,6 @@ spec:
       ports:
         - port: {{ .Values.service.http.port }}
           nodePort: {{ .Values.service.http.nodePort }}
+        - port: {{ .Values.service.https.port }}
+          nodePort: {{ .Values.service.https.nodePort }}
 

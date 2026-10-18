@@ -6,6 +6,21 @@ service:
   http:
     port: 80
     nodePort: 30080
+  https:
+    port: 443
+    nodePort: 30443
+
+tls:
+  acmeServer: https://host.docker.internal:9000/acme/acme/directory
+  dnsNames:
+    - argocd.k0s.localhost
+    - ceph.k0s.localhost
+    - gogs.k0s.localhost
+    - radar.k0s.localhost
+    - argocd.k0s.host.docker.internal
+    - ceph.k0s.host.docker.internal
+    - gogs.k0s.host.docker.internal
+    - radar.k0s.host.docker.internal
 
 kgateway:
   image:

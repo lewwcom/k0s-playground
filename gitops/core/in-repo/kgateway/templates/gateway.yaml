@@ -19,4 +19,16 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+    - name: https
+      protocol: HTTPS
+      port: {{ .Values.service.https.port }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - group: ""
+            kind: Secret
+            name: {{ include "common.names.fullname" . }}-tls
+      allowedRoutes:
+        namespaces:
+          from: All
 

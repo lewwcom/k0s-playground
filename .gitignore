@@ -1,4 +1,6 @@
 .env
+.direnv
+.local/
 image-bundle.tar
 kubeconfig.tmp
 cilium

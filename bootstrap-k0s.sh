@@ -87,15 +87,19 @@ main() {
     make commit-to-gogs
     cat gitops/applications/app.yaml | kubectlz-apply
 
+    until make APP=cert-manager wait-argocd-app; do :; done
     until make APP=kgateway wait-argocd-app; do :; done
+    if command -v step &> /dev/null || command -v step.exe &> /dev/null; then
+        make trust-ca
+    fi
     print-headline "Done!"
-    echo "You can access ArgoCD, Gogs, Ceph and Radar at:"
-    echo "- ArgoCD: http://argocd.k0s.localhost:30080 (admin:password)"
-    echo "- Gogs: http://gogs.k0s.localhost:30080 (gogs-admin:password)"
-    echo "- Ceph: http://ceph.k0s.localhost:30080 (admin:password)"
-    echo "- Radar: http://radar.k0s.localhost:30080"
-    echo
-    echo 'To access the cluster with kubectl, `source activate.sh`'
+    echo 'You can access ArgoCD, Gogs, Ceph and Radar at:
+- ArgoCD: https://argocd.k0s.localhost:30443 or http://argocd.k0s.localhost:30080 (admin:password)
+- Gogs: https://gogs.k0s.localhost:30443 or http://gogs.k0s.localhost:30080 (gogs-admin:password)
+- Ceph: https://ceph.k0s.localhost:30443 or http://ceph.k0s.localhost:30080 (admin:password)
+- Radar: https://radar.k0s.localhost:30443 or http://radar.k0s.localhost:30080
+
+To access the cluster with kubectl, `source activate.sh`'
 }
 
 print-headline() {

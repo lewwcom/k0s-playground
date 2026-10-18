@@ -2,6 +2,36 @@ crds:
   enabled: true
   keep: false
 
+config:
+  # Required for the gatewayHTTPRoute ACME HTTP-01 solver.
+  enableGatewayAPI: true
+
+# --- Why http_proxy points to kgateway-proxy ---
+# Before asking step-ca to validate an HTTP-01 challenge, cert-manager runs an
+# in-cluster self-check:
+#
+#   GET http://<domain>:80/.well-known/acme-challenge/<token>
+#
+# Cluster DNS has no records for *.k0s.localhost or *.k0s.host.docker.internal.
+# Routing plain HTTP through kgateway-proxy.kgateway.svc:80 skips DNS lookup for
+# <domain> and lets Envoy route the request by its Host header.
+http_proxy: "http://kgateway-proxy.kgateway.svc:80"
+
+# --- Why no_proxy omits "localhost" and pins ":9000" on host.docker.internal ---
+# Go's net/http/httpproxy treats bare domain entries in NO_PROXY as suffix
+# matches for all subdomains (e.g. "localhost" matches "*.k0s.localhost", and
+# "host.docker.internal" matches "*.k0s.host.docker.internal" on all ports),
+# which would bypass http_proxy during the port-80 self-check:
+#
+# - Omitting "localhost" falls back to Go's built-in exact check
+#   (host == "localhost"), so exact localhost bypasses the proxy while
+#   *.k0s.localhost still uses it.
+# - Go's httpproxy supports "host:port" entries in NO_PROXY (unlike many other
+#   implementations); pinning "host.docker.internal:9000" restricts the bypass
+#   to step-ca's ACME API port so port-80 self-checks for
+#   *.k0s.host.docker.internal still use http_proxy.
+no_proxy: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1,.svc,.cluster.local,host.docker.internal:9000"
+
 replicaCount: 2
 # imageRegistry: harbor.example.com/quay.io
 imageRegistry: quay.io

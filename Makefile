@@ -1,7 +1,7 @@
 highlight_style = \033[1;36m
 color_off = \033[0m
 target_name_width = 30
-print_headline = @echo; echo "${highlight_style}${1}${color_off}"
+print_headline = @printf "\n$(highlight_style)%s$(color_off)\n" $(1)
 
 # Make sure these env vars are set before calling, since there is no committer
 # info otherwise:
@@ -22,13 +22,13 @@ print_headline = @echo; echo "${highlight_style}${1}${color_off}"
 #
 # When USE_SUDO is set, git objects touched by this end up root-owned —
 # call gitz_cleanup afterward to restore the original owner.
-gitz = $(if ${USE_SUDO},sudo -E git,git)
+gitz = $(if $(USE_SUDO),sudo --preserve-env git,git)
 
 GITDIR := $(shell git rev-parse --git-dir)
 GITDIR_OWNER  := $(shell ls -dln $(GITDIR) | awk '{print $$3 ":" $$4}')
-gitz_cleanup = $(if ${USE_SUDO},sudo chown -R $(GITDIR_OWNER) "$(GITDIR)",)
+gitz_cleanup = $(if $(USE_SUDO),sudo chown -R $(GITDIR_OWNER) "$(GITDIR)",)
 
-dockerz = $(if ${USE_SUDO},sudo docker,docker)
+dockerz = $(if $(USE_SUDO),sudo docker,docker)
 kubectlz = $(dockerz) exec --interactive k0s-controller k0s kubectl "$$@"
 ifneq ($(shell command -v step.exe 2> /dev/null),)
 stepz = step.exe
@@ -41,56 +41,23 @@ endif
 # Ref: https://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 # Define target with help: <target>: <dep> ## <description>
 help:
-	@grep --extended-regexp '^[a-zA-Z0-9_-]+:.*?## .*$$' Makefile | \
+	@grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' Makefile | \
 	sort | \
 	awk '\
 	BEGIN {FS = ":.*?## "}; \
-	{printf "${highlight_style}%-${target_name_width}s${color_off} %s\n", $$1, $$2}'
+	{printf "$(highlight_style)%-$(target_name_width)s$(color_off) %s\n", $$1, $$2}'
 
 # include .env
 # Modify to interact with k0s-controller deployed in different host. deploy-k0s
 # target doesn't support this
 K0S_HOST ?= localhost
 
-gen-kubeconfig: ## Generate kubeconfig
-	@$(dockerz) exec k0s-controller k0s kubeconfig admin | \
-	yq --yaml-output '.clusters[0].name = "k0s" | .clusters[0].cluster.server = "https://${K0S_HOST}:6443" | .contexts[0].name = "k0s" | .contexts[0].context.cluster = "k0s" | ."current-context" = "k0s"'
-
+#===============================================================================
+# Cluster Management
+#===============================================================================
 deploy-k0s: ## Deploy k0s cluster with ArgoCD and Gogs
 	$(call print_headline,"Deploy k0s cluster with ArgoCD and Gogs")
 	./bootstrap-k0s.sh
-
-set-up-gogs-repo: ## Set up Gogs repository
-	$(call print_headline,"Waiting for Gogs to be ready...")
-	until curl --fail http://${K0S_HOST}:30018/healthcheck > /dev/null 2>&1; do :; done
-
-	$(call print_headline,"Set up Gogs repository")
-	curl --request POST --url http://${K0S_HOST}:30018/api/v1/users/gogs-admin/tokens \
-	--user gogs-admin:password \
-	--header 'Content-Type: application/json' \
-	--data '{"name": "$(shell date +%s | tail -c 5)"}' | jq --raw-output '.sha1' > /tmp/$@.tmp
-
-	@echo -n "Token: "; cat /tmp/$@.tmp; echo
-
-	curl --request DELETE --url http://${K0S_HOST}:30018/api/v1/repos/gogs-admin/k0s \
-	--header "Authorization: token $$(cat /tmp/$@.tmp | tr -d '\n')" || true
-
-	curl --request POST --url http://${K0S_HOST}:30018/api/v1/user/repos \
-	--header "Authorization: token $$(cat /tmp/$@.tmp | tr -d '\n')" \
-	--header 'Content-Type: application/json' \
-	--data '{"name": "k0s"}' | jq
-
-	$(gitz) remote remove gogs 2> /dev/null || true
-	$(gitz) remote add gogs http://gogs-admin:$$(cat /tmp/$@.tmp | tr -d '\n')@${K0S_HOST}:30018/gogs-admin/k0s.git
-	@$(gitz_cleanup)
-
-	@rm /tmp/$@.tmp
-
-wait-argocd-app: ## Wait for ArgoCD application to be ready (Usage: make APP=<app> wait-argocd-app)
-	$(call print_headline,"Waiting for ${APP} to be ready...")
-	$(kubectlz) --namespace argocd wait application/${APP} --for jsonpath='{.status.operationState.phase}'=Succeeded --timeout=15m
-	$(kubectlz) --namespace argocd wait application/${APP} --for jsonpath='{.status.sync.status}'=Synced --timeout=15m
-	$(kubectlz) --namespace argocd wait application/${APP} --for jsonpath='{.status.health.status}'=Healthy --timeout=15m
 
 destroy-k0s: ## Destroy k0s cluster
 	$(call print_headline,"Destroy k0s cluster")
@@ -111,27 +78,23 @@ destroy-k0s: ## Destroy k0s cluster
 	$(dockerz) run --rm --privileged --volume /dev:/dev busybox \
 	sh -c "mknod /dev/loop99 b 7 99 || true; losetup -d /dev/loop99 || true; rm -f /dev/loop99"
 
-commit-to-gogs: ## Commit to Gogs
-	$(call print_headline,"Commit to Gogs")
-	$(gitz) add .
-	$(gitz) commit --message "Commit to Gogs" --allow-empty --no-verify
-	$(gitz) push --force gogs master
-	$(gitz) reset --mixed HEAD~
-	@$(gitz_cleanup)
+gen-kubeconfig: ## Generate kubeconfig
+	@$(dockerz) exec k0s-controller k0s kubeconfig admin | \
+	yq --yaml-output \
+	".clusters[0].name = \"k0s\" \
+	| .clusters[0].cluster.server = \"https://$(K0S_HOST):6443\" \
+	| .contexts[0].name = \"k0s\" \
+	| .contexts[0].context.cluster = \"k0s\" \
+	| .\"current-context\" = \"k0s\""
 
-set-ceph-dashboard-password: ## Set Ceph dashboard password to "password"
-	$(call print_headline,"Waiting for Ceph to be ready...")
-	until $(kubectlz) --namespace ceph-cluster get deploy rook-ceph-mgr-a > /dev/null 2>&1; do :; done
-	$(kubectlz) --namespace ceph-cluster rollout status deploy rook-ceph-mgr-a --timeout=15m
-	until $(kubectlz) --namespace ceph-cluster get deploy rook-ceph-tools > /dev/null 2>&1; do :; done
-	$(kubectlz) --namespace ceph-cluster rollout status deploy rook-ceph-tools --timeout=15m
-
-	$(call print_headline,"Setting Ceph dashboard password to 'password'...")
-	until \
-	$(kubectlz) --namespace ceph-cluster exec deploy/rook-ceph-tools -- \
-	sh -c "echo -n password > /tmp/cdwp && \
-	ceph dashboard ac-user-set-password admin --force-password -i /tmp/cdwp"; \
-	do :; done
+#===============================================================================
+# GitOps
+#===============================================================================
+wait-argocd-app: ## Wait for ArgoCD application to be ready (Usage: make APP=<app> wait-argocd-app)
+	$(call print_headline,"Waiting for $(APP) to be ready...")
+	$(kubectlz) --namespace argocd wait application/$(APP) --for jsonpath='{.status.operationState.phase}'=Succeeded --timeout=15m
+	$(kubectlz) --namespace argocd wait application/$(APP) --for jsonpath='{.status.sync.status}'=Synced --timeout=15m
+	$(kubectlz) --namespace argocd wait application/$(APP) --for jsonpath='{.status.health.status}'=Healthy --timeout=15m
 
 define HELM_TEMPLATE_CMD
 yq --raw-output --arg name $(APP) ' \
@@ -152,11 +115,62 @@ endef
 helm-template: ## Generate manifests of external-helm app (Usage: make APP=<app> helm-template)
 	@$(shell $(HELM_TEMPLATE_CMD))
 
+commit-to-gogs: ## Commit to Gogs
+	$(call print_headline,"Commit to Gogs")
+	$(gitz) add .
+	$(gitz) commit --message "Commit to Gogs" --allow-empty --no-verify
+	$(gitz) push --force gogs master
+	$(gitz) reset --mixed HEAD~
+	@$(gitz_cleanup)
+
+#===============================================================================
+# Setup applications
+#===============================================================================
+set-ceph-dashboard-password: ## Set Ceph dashboard password to "password"
+	$(call print_headline,"Waiting for Ceph to be ready...")
+	until $(kubectlz) --namespace ceph-cluster get deploy rook-ceph-mgr-a > /dev/null 2>&1; do :; done
+	$(kubectlz) --namespace ceph-cluster rollout status deploy rook-ceph-mgr-a --timeout=15m
+	until $(kubectlz) --namespace ceph-cluster get deploy rook-ceph-tools > /dev/null 2>&1; do :; done
+	$(kubectlz) --namespace ceph-cluster rollout status deploy rook-ceph-tools --timeout=15m
+
+	$(call print_headline,"Setting Ceph dashboard password to 'password'...")
+	until \
+	$(kubectlz) --namespace ceph-cluster exec deploy/rook-ceph-tools -- \
+	sh -c "printf 'password' > /tmp/cdwp && \
+	ceph dashboard ac-user-set-password admin --force-password -i /tmp/cdwp"; \
+	do :; done
+
+set-up-gogs-repo: ## Set up Gogs repository
+	$(call print_headline,"Waiting for Gogs to be ready...")
+	until curl --fail http://$(K0S_HOST):30018/healthcheck > /dev/null 2>&1; do :; done
+
+	$(call print_headline,"Set up Gogs repository")
+	curl --request POST --url http://$(K0S_HOST):30018/api/v1/users/gogs-admin/tokens \
+	--user gogs-admin:password \
+	--header 'Content-Type: application/json' \
+	--data '{"name": "$(shell date +%s | tail -c 5)"}' | jq --raw-output '.sha1' > /tmp/$@.tmp
+
+	@printf "Token: "; cat /tmp/$@.tmp; printf "\n"
+
+	curl --request DELETE --url http://$(K0S_HOST):30018/api/v1/repos/gogs-admin/k0s \
+	--header "Authorization: token $$(cat /tmp/$@.tmp | tr -d '\n')" || true
+
+	curl --request POST --url http://$(K0S_HOST):30018/api/v1/user/repos \
+	--header "Authorization: token $$(cat /tmp/$@.tmp | tr -d '\n')" \
+	--header 'Content-Type: application/json' \
+	--data '{"name": "k0s"}' | jq
+
+	$(gitz) remote remove gogs 2> /dev/null || true
+	$(gitz) remote add gogs http://gogs-admin:$$(cat /tmp/$@.tmp | tr -d '\n')@$(K0S_HOST):30018/gogs-admin/k0s.git
+	@$(gitz_cleanup)
+
+	@rm /tmp/$@.tmp
+
 trust-ca: ## Install step-ca root certificate into the host trust store
 	$(call print_headline,"Trusting step-ca root certificate on host...")
 	$(stepz) ca bootstrap \
 	--force \
-	--ca-url https://${K0S_HOST}:9000 \
+	--ca-url https://$(K0S_HOST):9000 \
 	--fingerprint "$$($(dockerz) exec step-ca step certificate fingerprint /home/step/certs/root_ca.crt)" \
 	--install
 

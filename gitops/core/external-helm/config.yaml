@@ -33,3 +33,10 @@ apps:
     revision: 1.14.1
     values: skyhook-radar.values.yaml
 
+  - name: cloudnative-pg
+    namespace: cnpg-system
+    repo: https://cloudnative-pg.github.io/charts
+    chart: cloudnative-pg
+    revision: 0.29.1
+    values: cloudnative-pg.values.yaml
+

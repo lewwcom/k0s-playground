@@ -1,0 +1,4 @@
+image:
+  # repository: harbor.example.com/ghcr.io/cloudnative-pg/cloudnative-pg
+  repository: ghcr.io/cloudnative-pg/cloudnative-pg
+

@@ -1,8 +1,10 @@
+busybox:1.33.1
 cr.kgateway.dev/kgateway-dev/kgateway:v2.4.3
 docker.io/kong/kong-gateway:3.14
 docker.io/kong/kong-operator:2.1.3
 docker.io/rancher/local-path-provisioner:v0.0.36
 docker.io/rook/ceph:v1.20.8
+docker.io/sonatype/nexus3:3.97.1
 ghcr.io/cloudnative-pg/cloudnative-pg:1.30.1
 ghcr.io/dexidp/dex:v2.45.1
 ghcr.io/gogs/gogs:next-0.14.3
@@ -31,3 +33,4 @@ quay.io/k0sproject/metrics-server:v0.9.0-k0s.1
 quay.io/k0sproject/pause:3.10.2-0
 quay.io/k0sproject/pushgateway-ttl:1.4.0-k0s.3
 quay.io/k0sproject/traefik:v3.7.13-k0s.0
+sonatype/nexus3:3.97.1

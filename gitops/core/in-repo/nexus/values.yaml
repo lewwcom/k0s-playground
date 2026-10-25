@@ -1,0 +1,60 @@
+logStorage:
+  tailSecondaryLogs: false
+
+namespaces:
+  nexusNs:
+    enabled: false
+    name: "nexus"
+
+statefulset:
+  clustered: false
+  replicaCount: 1
+  container:
+    image:
+      # repository: harbor.example.com/docker.io/sonatype/nexus3
+      repository: docker.io/sonatype/nexus3
+      nexusTag: 3.97.1
+    resources:
+      requests:
+        cpu: 500m
+        memory: "3Gi"
+      limits:
+        cpu: 2
+        memory: "4Gi"
+    additionalEnv:
+      - name: DB_NAME
+        value: "nexus"
+      - name: DB_HOST
+        value: "postgres-nexus-rw"
+      - name: DB_PORT
+        value: "5432"
+      - name: DB_USER
+        valueFrom:
+          secretKeyRef:
+            name: postgres-nexus-app
+            key: username
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: postgres-nexus-app
+            key: password
+
+secret:
+  existingDbSecret:
+    enabled: true
+  nexusAdminSecret:
+    enabled: true
+    adminPassword: password
+
+service:
+  nexus:
+    enabled: true
+    type: ClusterIP
+
+storageClass:
+  name: loop-rook-cephfs
+
+pvc:
+  volumeClaimTemplate:
+    enabled: true
+

@@ -1,0 +1,18 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: postgres-nexus
+spec:
+  instances: 1
+  imageName: ghcr.io/cloudnative-pg/postgresql:16
+  storage:
+    storageClass: loop-rook-cephfs
+    size: 1Gi
+  postgresql:
+    parameters:
+      # https://help.sonatype.com/en/postgresql-max-connections.html
+      max_connections: "350"
+  bootstrap:
+    initdb:
+      database: nexus
+      owner: nexus

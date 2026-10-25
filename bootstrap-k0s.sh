@@ -82,7 +82,8 @@ main() {
     local app; for app in "${core_apps[@]}"; do
         print_headline "Deploy $app"
         local app_path=${app,,}
-        kubectl kustomize gitops/core/in-repo/"$app_path"/ | kubectlz_apply
+        kubectl kustomize --enable-helm gitops/core/in-repo/"$app_path"/ |
+            kubectlz_apply
     done
 
     make set-ceph-dashboard-password
@@ -93,6 +94,9 @@ main() {
 
     until make APP=cert-manager wait-argocd-app; do :; done
     until make APP=kgateway wait-argocd-app; do :; done
+
+    setup_nexus
+
     if command -v step > /dev/null 2>&1 || command -v step.exe > /dev/null 2>&1; then
         make trust-ca
     fi
@@ -102,6 +106,7 @@ main() {
 - ArgoCD: https://argocd.k0s.localhost:30443 or http://argocd.k0s.localhost:30080 (admin:password)
 - Gogs: https://gogs.k0s.localhost:30443 or http://gogs.k0s.localhost:30080 (gogs-admin:password)
 - Ceph: https://ceph.k0s.localhost:30443 or http://ceph.k0s.localhost:30080 (admin:password)
+- Nexus: https://nexus.k0s.localhost:30443 or http://nexus.k0s.localhost:30080 (admin:password)
 - Radar: https://radar.k0s.localhost:30443 or http://radar.k0s.localhost:30080
 
 To access the cluster with kubectl, `source activate.sh`'
@@ -204,6 +209,36 @@ deploy_cilium() {
         kubectlz_apply --namespace cilium-secrets
     make --no-print-directory gen-kubeconfig > kubeconfig.tmp
     ./cilium --kubeconfig kubeconfig.tmp status --wait
+}
+
+setup_nexus() {
+    print_headline "Waiting for Nexus to be ready..."
+    local status; until
+        status="$(
+            curl --silent --output /dev/null --write-out "%{http_code}" \
+                http://nexus.k0s.localhost:30080/service/rest/v1/status/writable ||
+                true
+        )" &&
+        [ "$status" = "200" ]
+    do :; done
+
+    print_headline "Accept Nexus EULA"
+    local eula_payload
+    eula_payload=$(
+        curl --silent --insecure \
+            --user "admin:password" \
+            http://nexus.k0s.localhost:30080/service/rest/v1/system/eula 2>/dev/null |
+            sed 's/"accepted" : false/"accepted" : true/' ||
+            true
+    )
+    if [ -n "$eula_payload" ]; then
+        curl --silent --insecure \
+            --user "admin:password" \
+            --request POST http://nexus.k0s.localhost:30080/service/rest/v1/system/eula \
+            --header "Content-Type: application/json" \
+            --data "$eula_payload" > /dev/null 2>&1 ||
+            true
+    fi
 }
 
 main "$@"

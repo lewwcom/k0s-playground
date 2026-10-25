@@ -17,7 +17,7 @@ find gitops/*/in-repo -name Chart.yaml -not -path "*/charts/*" -print0 |
             xargs -I {} make APP={} helm-template
         echo "---"
         find gitops/*/in-repo -name kustomization.yaml -print0 |
-            xargs -0 dirname | xargs -n 1 kubectl kustomize
+            xargs -0 dirname | xargs -n 1 kubectl kustomize --enable-helm
         echo "---"
         find gitops/*/in-repo -name Chart.yaml -not -path "*/charts/*" -print0 |
             xargs -0 dirname | xargs -n 1 helm template

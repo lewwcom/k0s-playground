@@ -5,11 +5,10 @@ Docker and bootstraps it with a GitOps stack:
 
 - [ArgoCD](https://argo-cd.readthedocs.io/) for continuous delivery;
 - [Gogs](https://gogs.io/) as an in-cluster Git remote that ArgoCD syncs from;
-- [Radar](https://radarhq.io/) as K8s UI, and;
-- [Kgateway](https://kgateway.dev/) as the Gateway API ingress.
-
-All container images can be mirrored through the self-hosted Harbor registry
-rather than pulled from public registries.
+- [Radar](https://radarhq.io/) as K8s UI;
+- [Kgateway](https://kgateway.dev/) as the Gateway API ingress, and;
+- [Nexus](https://www.sonatype.com/products/nexus-community-edition-download) as
+  artifact repository manager (OCI, etc.);
 
 ## Prerequisites
 
@@ -64,6 +63,7 @@ Once it finishes, the stack is reachable at:
 - ArgoCD: <https://argocd.k0s.localhost:30443> or <http://argocd.k0s.localhost:30080> (`admin:password`)
 - Gogs: <https://gogs.k0s.localhost:30443> or <http://gogs.k0s.localhost:30080> (`gogs-admin:password`)
 - Ceph: <https://ceph.k0s.localhost:30443> or <http://ceph.k0s.localhost:30080> (`admin:password`)
+- Nexus: <https://nexus.k0s.localhost:30443> or <http://nexus.k0s.localhost:30080> (`admin:password`)
 - Radar: <https://radar.k0s.localhost:30443> or <http://radar.k0s.localhost:30080>
 
 ## External compose integration
@@ -233,4 +233,96 @@ gitops/            Everything ArgoCD manages once the cluster is up
   waiting on ArgoCD apps, tearing the cluster down, etc.).
 - Destroy the cluster: `make destroy-k0s` (runs `docker compose down --volumes`).
 - Re-run the bootstrap after a teardown: `./bootstrap-k0s.sh`.
+
+## Troubleshooting
+
+### CephFS FUSE mounts and recovery
+
+OrbStack lacks the in-tree `ceph.ko` kernel module, requiring CephFS to run
+through user-space `ceph-fuse` daemons (one daemon per PVC). When a `ceph-fuse`
+daemon exits unexpectedly, the mount point enters an unresponsive `ENOTCONN`
+state in the Linux kernel VFS.
+
+#### Failure symptoms
+
+- **Transport endpoint is not connected (`ENOTCONN`)** - `containerd` fails
+  during container creation with `CreateContainerError` when attempting `stat()`
+  on `/var/lib/k0s/kubelet/pods/<pod-uid>/volumes/.../mount`.
+- **Pod stuck in `Terminating`** - Kubelet volume detachment controller hangs
+  indefinitely trying to unmount a severed FUSE mount during standard pod
+  deletion.
+- **Kubelet staging conflict (`file exists`)** - Kubelet `attacher.MountDevice`
+  fails with `file exists` on `/globalmount` during volume restaging, aborting
+  before Ceph-CSI is invoked over gRPC.
+
+#### Why pods enter a restart deadlock
+
+When a container crashes or is killed inside an existing pod, Kubelet only
+invokes CRI (`containerd`) to restart the container process. Because Kubelet's
+Volume Manager already considers the volume mounted for that pod UID, Kubelet
+never reinvokes CSI volume publishing (`NodePublishVolume`).
+
+Ceph-CSI contains FUSE recovery routines, but they only execute during volume
+publishing. Because that call is bypassed, the CSI driver never attempts to
+recover the severed mount. `containerd` attempts to `stat()` the dead mount
+path, receives `ENOTCONN`, and loops indefinitely in `CreateContainerError`.
+
+#### Recovery procedure
+
+1. Force-delete affected workload pods to release Kubelet volume locks:
+
+   Standard deletion hangs because Kubelet attempts a graceful unmount against
+   the severed FUSE mount, which blocks indefinitely in the kernel.
+   Force-deleting the pod bypasses the graceful unmount check, terminates the
+   pod API object, and releases Kubelet's volume lock for that pod UID.
+
+   ```bash
+   kubectl -n <namespace> delete pod <pod-name> --force --grace-period=0
+   ```
+
+
+2. Handle severed FUSE mounts inside `k0s-controller`:
+
+   **Stale mount:** When `ceph-fuse` terminates, the Linux kernel VFS retains
+   the broken mount entry, returning `ENOTCONN` or `EEXIST` on subsequent
+   access. During volume staging (`NodeStageVolume`), Kubelet's internal
+   `attacher.MountDevice` runs `os.MkdirAll` on `.../globalmount` before
+   invoking Ceph-CSI; because the stale mount is still attached,
+   `os.MkdirAll` fails with `file exists` and aborts staging. Executing
+   `umount -l` detaches severed endpoints from the kernel VFS tree immediately.
+
+   ```bash
+   # Identify the broken mount points
+   docker exec k0s-controller sh -c "
+       grep fuse /proc/mounts |
+           awk '{print \$2}' |
+           xargs -I{} sh -c \"echo === {} ===; timeout 1 ls -lah {}\"
+   "
+
+   # Unmount it
+   docker exec k0s-controller umount -l <mount-point>
+   ```
+
+   **Frozen mount:** Dead client disconnected without releasing Ceph capability
+   locks. Calls (from newly restarted pod) hang indefinitely in `D` state
+   (uninterruptible sleep), Ceph reports `MDS_CLIENT_LATE_RELEASE` and
+   `MDS_SLOW_REQUEST`. Check and evict stale MDS sessions:
+
+   ```bash
+   # 1. Check if MDS is waiting on dead client capabilities:
+   kubectl -n ceph-cluster exec deploy/rook-ceph-tools -- ceph health detail
+
+   # 2. If MDS_CLIENT_LATE_RELEASE is present, evict the stale client ID:
+   kubectl -n ceph-cluster exec deploy/rook-ceph-tools -- ceph tell mds.loop-a client evict id=<client_id>
+   ```
+
+3. Restart the CephFS CSI nodeplugin if Kubelet reports CSI socket disconnection:
+
+   Deleting the DaemonSet pod re-establishes the gRPC registration socket with
+   Kubelet and allows Ceph-CSI to spawn fresh `ceph-fuse` instances for
+   subsequent mounts.
+
+   ```bash
+   kubectl -n rook-ceph delete pod -l app=rook-ceph.cephfs.csi.ceph.com-nodeplugin --force --grace-period=0
+   ```
 

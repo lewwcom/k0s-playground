@@ -1,0 +1,24 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: nexus
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: kgateway-proxy
+      namespace: kgateway
+  hostnames:
+    - nexus.k0s.localhost
+    - nexus.k0s.host.docker.internal
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - group: ""
+          kind: Service
+          name: nexus-nxrm-ha
+          port: 80
+          weight: 1

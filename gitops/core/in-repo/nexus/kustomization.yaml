@@ -1,0 +1,90 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: nexus
+
+resources:
+  - namespace.yaml
+  - cluster.yaml
+  - httproute.yaml
+
+helmCharts:
+  - name: nxrm-ha
+    repo: https://sonatype.github.io/helm3-charts/
+    version: 97.1.0
+    releaseName: nexus
+    namespace: nexus
+    valuesFile: values.yaml
+
+# Upstream nxrm-ha chart unconditionally injects
+# -Dnexus.licenseFile=${LICENSE_FILE} into INSTALL4J_ADD_VM_PARAMS, causing
+# Nexus Community (OSS) to crash on startup (FileNotFoundException or license
+# check failure).
+#
+# This patch strips -Dnexus.licenseFile while keeping PostgreSQL datastore
+# settings for single-instance Community deployment.
+patches:
+  - target:
+      group: apps
+      version: v1
+      kind: StatefulSet
+      name: nexus-nxrm-ha
+    patch: |-
+      apiVersion: apps/v1
+      kind: StatefulSet
+      metadata:
+        name: nexus-nxrm-ha
+      spec:
+        template:
+          spec:
+            initContainers:
+              - name: wait-for-postgres
+                image: ghcr.io/cloudnative-pg/postgresql:16
+                env:
+                  - name: PGHOST
+                    value: "postgres-nexus-rw"
+                  - name: PGPORT
+                    value: "5432"
+                  - name: PGDATABASE
+                    value: "nexus"
+                  - name: PGUSER
+                    valueFrom:
+                      secretKeyRef:
+                        name: postgres-nexus-app
+                        key: username
+                  - name: PGPASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: postgres-nexus-app
+                        key: password
+                  - name: PGCONNECT_TIMEOUT
+                    value: "5"
+                command:
+                  - sh
+                  - -c
+                  - |
+                    echo "Waiting for PostgreSQL (postgres-nexus-rw:5432) to be ready..."
+                    until psql -c "SELECT 1;" > /dev/null 2>&1; do
+                      echo "PostgreSQL is unavailable - sleeping 2s"
+                      sleep 2
+                    done
+                    echo "PostgreSQL is ready!"
+                resources:
+                  requests:
+                    cpu: 50m
+                    memory: 64Mi
+                  limits:
+                    cpu: 100m
+                    memory: 128Mi
+            containers:
+              - name: nxrm-app
+                env:
+                  - name: INSTALL4J_ADD_VM_PARAMS
+                    value: >-
+                      -Xms2703m -Xmx2703m
+                      -Dnexus.datastore.enabled=true
+                      -Djava.util.prefs.userRoot=${NEXUS_DATA}/javaprefs
+                      -Dnexus.datastore.nexus.jdbcUrl=jdbc:postgresql://${DB_HOST}:5432/${DB_NAME}
+                      -Dnexus.datastore.nexus.username=${DB_USER}
+                      -Dnexus.datastore.nexus.password=${DB_PASSWORD}
+

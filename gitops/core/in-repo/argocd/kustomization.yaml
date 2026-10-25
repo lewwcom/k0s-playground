@@ -47,6 +47,7 @@ patches:
       data:
         exec.enabled: "true"
         accounts.radar: apiKey
+        kustomize.buildOptions: "--enable-helm"
   - patch: |
       apiVersion: v1
       kind: ConfigMap

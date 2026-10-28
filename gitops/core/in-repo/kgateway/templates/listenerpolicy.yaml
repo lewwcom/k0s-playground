@@ -37,6 +37,8 @@ spec:
       xffTrustedCIDRs:
         - "10.0.0.0/8"
 
+      serverHeaderTransformation: AppendIfAbsent
+
       # Google z-pages convention, see: https://stackoverflow.com/a/43381061
       healthCheck:
         path: /statusz/ready

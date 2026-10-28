@@ -1,0 +1,3 @@
+nexus_url      = "http://nexus.k0s.localhost:30080"
+nexus_username = "admin"
+nexus_password = "password"

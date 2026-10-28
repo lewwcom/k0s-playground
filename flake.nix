@@ -33,6 +33,7 @@
               jq
               kubectl
               kubernetes-helm
+              opentofu
               step-cli
               yq
             ];

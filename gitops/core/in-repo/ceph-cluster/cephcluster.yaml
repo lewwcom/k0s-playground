@@ -6,7 +6,7 @@ metadata:
 spec:
   dataDirHostPath: /var/lib/rook/loop
   cephVersion:
-    image: quay.io/ceph/ceph:v20
+    image: nexus.k0s.localhost:30443/quay.io/ceph/ceph:v20
     allowUnsupported: true
   mon:
     count: 1

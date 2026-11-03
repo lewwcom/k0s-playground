@@ -33,8 +33,7 @@ http_proxy: "http://kgateway-proxy.kgateway.svc:80"
 no_proxy: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1,.svc,.cluster.local,host.docker.internal:9000"
 
 replicaCount: 2
-# imageRegistry: harbor.example.com/quay.io
-imageRegistry: quay.io
+imageRegistry: nexus.k0s.localhost:30443/quay.io
 imageNamespace: jetstack
 image:
   name: cert-manager-controller

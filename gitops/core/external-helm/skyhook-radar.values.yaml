@@ -1,10 +1,8 @@
 image:
-  # repository: harbor.example.com/ghcr.io/skyhook-io/radar
-  repository: ghcr.io/skyhook-io/radar
+  repository: nexus.k0s.localhost:30443/ghcr.io/skyhook-io/radar
 
 debug:
-  # image: harbor.example.com/docker.io/library/busybox:latest
-  image: docker.io/library/busybox:latest
+  image: nexus.k0s.localhost:30443/docker.io/library/busybox:latest
 
 # RBAC configuration
 rbac:

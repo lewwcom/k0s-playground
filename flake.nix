@@ -34,14 +34,16 @@
               kubectl
               kubernetes-helm
               opentofu
+              oras
               step-cli
               yq
             ];
 
             shellHook = ''
               ln -sf "${pkgs.cilium-cli}/bin/cilium" cilium
-              mkdir -p $PWD/.local
+              mkdir -p $PWD/.local/oras
               export STEPPATH="$PWD/.local/step"
+              export ORAS_CACHE="$PWD/.local/oras"
               if make gen-kubeconfig &> /dev/null; then
                 . activate.sh > /dev/null 2>&1
               fi

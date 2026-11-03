@@ -44,5 +44,5 @@ patches:
           spec:
             containers:
               - name: rook-ceph-tools
-                image: quay.io/ceph/ceph:v20
+                image: nexus.k0s.localhost:30443/quay.io/ceph/ceph:v20
 

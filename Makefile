@@ -174,3 +174,6 @@ trust-ca: ## Install step-ca root certificate into the host trust store
 	--fingerprint "$$($(dockerz) exec step-ca step certificate fingerprint /home/step/certs/root_ca.crt)" \
 	--install
 
+verify-nexus-images: ## Verify Nexus proxy by none-cache pulling images (Usage: make [IMAGES=...] verify-nexus-images)
+	./verify-nexus-images.sh $(IMAGES)
+

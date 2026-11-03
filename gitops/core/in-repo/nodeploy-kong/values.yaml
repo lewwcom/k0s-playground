@@ -1,6 +1,5 @@
 global:
-  # imageRegistry: "harbor.example.com/docker.io"
-  imageRegistry: "docker.io"
+  imageRegistry: "nexus.k0s.localhost:30443/docker.io"
 
   # Kong-operator
   webhooks:
@@ -39,8 +38,7 @@ globalPlugins:
 
 kong-operator-chart:
   image:
-    # repository: harbor.example.com/docker.io/kong/kong-operator
-    repository: docker.io/kong/kong-operator
+    repository: nexus.k0s.localhost:30443/docker.io/kong/kong-operator
     tag: "2.1.3"
   ko-crds:
     keep: false

@@ -2,8 +2,20 @@ kubeProxyReplacement: "true"
 k8sServiceHost: host.docker.internal
 k8sServicePort: 6443
 
+image:
+  repository: nexus.k0s.localhost:30443/quay.io/cilium/cilium
+  useDigest: false
+
 operator:
   replicas: 1
+  image:
+    repository: nexus.k0s.localhost:30443/quay.io/cilium/operator
+    useDigest: false
+
+envoy:
+  image:
+    repository: nexus.k0s.localhost:30443/quay.io/cilium/cilium-envoy
+    useDigest: false
 
 # For multi-nodes cluster, enable transparent encryption.
 # See: https://docs.cilium.io/en/stable/security/network/encryption/

@@ -4,9 +4,9 @@ kind: Kustomization
 resources:
   - https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.36/deploy/local-path-storage.yaml
 
-# images:
-#   - name: docker.io/rancher/local-path-provisioner
-#     newName: harbor.example.com/docker.io/rancher/local-path-provisioner
+images:
+  - name: docker.io/rancher/local-path-provisioner
+    newName: nexus.k0s.localhost:30443/docker.io/rancher/local-path-provisioner
 
 patches:
   - patch: |-
@@ -29,7 +29,6 @@ patches:
                 effect: NoSchedule
             containers:
               - name: helper-pod
-                # image: harbor.example.com/docker.io/library/busybox
-                image: docker.io/library/busybox
+                image: nexus.k0s.localhost:30443/docker.io/library/busybox
                 imagePullPolicy: IfNotPresent
 

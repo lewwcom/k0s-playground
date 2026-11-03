@@ -17,8 +17,6 @@ Docker and bootstraps it with a GitOps stack:
   `nix develop`)
 - [Optional] `step-cli` to trust `step-ca`'s root certificate on the host
   (install on the host or run `nix develop`)
-- [Optional, if use Harbor] A `.env` file with Harbor credentials (copy
-  `.env.example` and fill in `HARBOR_USER` / `HARBOR_PASSWORD`)
 
 > [!note]
 >
@@ -35,7 +33,6 @@ Docker and bootstraps it with a GitOps stack:
 # Setup git hooks
 git config core.hooksPath .githooks
 
-cp .env.example .env   # [Optional] fill in HARBOR_USER / HARBOR_PASSWORD
 ./bootstrap-k0s.sh
 ```
 
@@ -47,7 +44,7 @@ mode it:
    environment.
 2. Starts the `k0s-controller` and `step-ca` containers via `docker compose`
    (see `compose.yaml`, `k0s.yaml`).
-3. [Optional] Configures containerd to authenticate against Harbor.
+3. Configures containerd to trust in-cluster Nexus.
 4. Applies the core apps directly: `rook-ceph-operator`, `ceph-csi-drivers`,
    `gateway-api-crds`, `ceph-cluster`, `ArgoCD` and `Gogs`.
    (in simpler deployment, can use `local-path-provisioner` instead of ceph)
@@ -117,6 +114,9 @@ services:
         privileged: true
     hostname: k0s-controller
     network_mode: bridge
+    extra_hosts:
+      - "nexus.k0s.localhost:127.0.0.1"
+      - "nexus.k0s.host.docker.internal:127.0.0.1"
     ports:
       - 6443:6443   # Kubernetes API
       - 30080:30080 # HTTP ingress
@@ -170,7 +170,6 @@ services:
   k0s-controller-bootstrap:
     # Any image with bash, git, make, kubectl and docker CLI
     image: nixery.dev/[arm64/]shell/gnumake/docker-client/kubectl
-    env_file: .env # [optional] contains HARBOR_USER and HARBOR_PASSWORD
     environment:
       K0S_HOST: host.docker.internal  # k0s ports are on the Docker host
       USE_SUDO: "true"                # bootstrap container can sudo but not access docker directly
@@ -218,7 +217,7 @@ bootstrap-k0s.sh   Bootstraps the cluster end-to-end (see --help)
 compose.yaml       Docker Compose definition for k0s-controller and step-ca
 flake.nix          Nix flake devShell
 k0s.yaml           k0s ClusterConfig mounted into the controller
-airgap-images.txt  k0s core images mirrored (from Harbor, probably) before cluster start
+airgap-images.txt  k0s core images mirrored before cluster start
 Makefile           Helper targets used by bootstrap-k0s.sh and for day-to-day use
 gitops/            Everything ArgoCD manages once the cluster is up
   applications/    App-of-apps Helm chart - see gitops/applications/README.md
@@ -226,6 +225,15 @@ gitops/            Everything ArgoCD manages once the cluster is up
     in-repo/       Kustomize/Helm apps sourced straight from this repo
     external-helm/ Config-driven external Helm chart deployments (e.g. cert-manager)
 ```
+
+> [!note]
+>
+> Workload images that are not declared via standard `.image` scalar fields
+> (e.g. dynamic sidecars configured via CLI args or custom CRDs like
+> CloudNative-PG's `imageName` or Kgateway's `envoyContainer`) are extracted
+> dynamically using local `*airgap-images.jq` query files within the component's
+> folder (for example: `gitops/core/in-repo/nexus/airgap-images.jq`).
+> `./list-images.sh` applies these filters to the rendered manifests.
 
 ## Common tasks
 

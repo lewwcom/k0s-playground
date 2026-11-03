@@ -22,7 +22,6 @@ Bootstraps a local k0s Kubernetes cluster with ArgoCD and Gogs.
                        is started by an external compose stack.
 
 Environment variables:
-  HARBOR_USER / HARBOR_PASSWORD   Harbor registry credentials (see .env.example).
   USE_SUDO                        Set to any non-empty value to prefix docker commands with sudo.
   K0S_HOST                        Host where k0s ports are exposed (default: localhost).
                                   Used by Makefile targets, not by this script directly.'
@@ -31,8 +30,6 @@ Environment variables:
 esac
 
 cd "$(dirname "$0")"
-# shellcheck disable=SC1091
-. ./.env
 
 main() {
     case "${1-}" in
@@ -51,8 +48,8 @@ main() {
     until kubectlz cluster-info > /dev/null 2>&1; do :; done
     kubectlz cluster-info
 
-    # TODO: Self-host Harbor
-    # add_harbor_auth
+    # Configure containerd for Nexus with Step-CA
+    setup_nexus_containerd
 
     # Wait for loop device
     dockerz exec k0s-controller sh -c '
@@ -147,40 +144,77 @@ kubectlz_apply() {
 }
 
 bundle_images() {
-    print_headline "Pull k0s core images"
-    # local prefix="harbor.example.com/"
-    local upstream_images=()
+    print_headline "Pull k0s core and application images"
+    local prefix="nexus.k0s.localhost:30443/"
+
+    local cache_dir="${ORAS_CACHE:-$HOME/.cache/oras}/layout"
+    local arch=amd64
+    if [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]; then arch=arm64; fi
+    local bundled_images=()
+
+    if command -v oras > /dev/null 2>&1; then
+        mkdir -p "$cache_dir"
+        pull_and_tag() {
+            until oras cp --platform "linux/$arch" --to-oci-layout-path "$cache_dir" "$1" "$2"; do :; done
+        }
+        export_bundle() {
+            tar -cf image-bundle.tar -C "$cache_dir" .
+        }
+    else
+        pull_and_tag() {
+            until dockerz pull "$1"; do :; done
+            dockerz tag "$1" "$2"
+            bundled_images+=("$2")
+        }
+        export_bundle() {
+            dockerz image save --output image-bundle.tar "${bundled_images[@]}"
+        }
+    fi
 
     while IFS= read -r image; do
         [ -z "$image" ] && continue
-        until dockerz pull "$image"; do :; done
-        # TODO: Self-host Harbor
-        # local upstream="${image#"$prefix"}"
-        # dockerz tag "$image" "$upstream"
-        # upstream_images+=("$upstream")
-        upstream_images+=("$image")
+        local src_img="$image"
+        local dest_tag="$image"
+
+        if [[ "$image" == "$prefix"* ]]; then
+            src_img="${image#"$prefix"}"
+            dest_tag="${image%@*}"
+        fi
+
+        pull_and_tag "$src_img" "$dest_tag"
     done <airgap-images.txt
 
-    dockerz image save --output image-bundle.tar "${upstream_images[@]}"
+    export_bundle
 }
 
-add_harbor_auth() {
-    dockerz exec k0s-controller mkdir -p /etc/k0s/containerd.d/certs.d/harbor.example.com
-    echo 'version = 2
+setup_nexus_containerd() {
+    print_headline "Configure containerd for Nexus with Step-CA"
+    dockerz exec k0s-controller mkdir -p /etc/k0s/certs /etc/k0s/containerd.d/certs.d/nexus.k0s.localhost:30443
 
-[plugins."io.containerd.grpc.v1.cri".registry]
+    # Ensure local resolution fallback if container was not recreated with new compose.yaml
+    dockerz exec k0s-controller grep -q "nexus.k0s.localhost" /etc/hosts ||
+        dockerz exec k0s-controller sh -c "echo '127.0.0.1 nexus.k0s.localhost' >> /etc/hosts"
+
+    # Download Step-CA root certificate
+    dockerz exec k0s-controller wget --no-check-certificate -q -O /etc/k0s/certs/step-ca.crt https://host.docker.internal:9000/roots.pem
+
+    # Configure containerd CRI registry directory (containerd 2.x v3 format)
+    echo 'version = 3
+
+[plugins."io.containerd.cri.v1.images".registry]
 config_path = "/etc/k0s/containerd.d/certs.d"
 ' | dockerz exec --interactive k0s-controller tee /etc/k0s/containerd.d/cri-registry.toml > /dev/null
 
-    cat <<EOF | dockerz exec --interactive k0s-controller tee /etc/k0s/containerd.d/certs.d/harbor.example.com/hosts.toml > /dev/null
-server = "https://harbor.example.com"
+    # Configure hosts.toml for nexus.k0s.localhost:30443
+    cat <<EOF | dockerz exec --interactive k0s-controller tee /etc/k0s/containerd.d/certs.d/nexus.k0s.localhost:30443/hosts.toml > /dev/null
+server = "https://nexus.k0s.localhost:30443"
 
-[host."https://harbor.example.com"]
+[host."https://nexus.k0s.localhost:30443"]
 capabilities = ["pull", "resolve"]
-skip_verify = true
+ca = "/etc/k0s/certs/step-ca.crt"
 
-[host."https://harbor.example.com".header]
-authorization = "Basic $(printf '%s:%s' "$HARBOR_USER" "$HARBOR_PASSWORD" | base64)
+# [host."https://nexus.k0s.localhost:30443".header]
+# authorization = "Basic $(printf 'admin:password' | base64)"
 EOF
 }
 
@@ -239,6 +273,10 @@ setup_nexus() {
             --data "$eula_payload" > /dev/null 2>&1 ||
             true
     fi
+
+    print_headline "Apply OpenTofu configuration for Nexus"
+    tofu -chdir=gitops/core/in-repo/nexus/opentofu init
+    tofu -chdir=gitops/core/in-repo/nexus/opentofu apply -auto-approve
 }
 
 main "$@"

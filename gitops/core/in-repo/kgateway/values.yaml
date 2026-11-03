@@ -1,6 +1,7 @@
 image:
-  registry: cr.kgateway.dev
-  repository: kgateway-dev/envoy-wrapper
+  registry: nexus.k0s.localhost:30443/ghcr.io/kgateway-dev
+  repository: envoy-wrapper
+  tag: v2.4.3
 
 service:
   http:
@@ -26,7 +27,7 @@ tls:
 
 kgateway:
   image:
-    registry: "cr.kgateway.dev/kgateway-dev"
+    registry: "nexus.k0s.localhost:30443/ghcr.io/kgateway-dev"
 
   controller:
     image:

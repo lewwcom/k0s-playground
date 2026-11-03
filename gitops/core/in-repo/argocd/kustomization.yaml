@@ -8,13 +8,13 @@ resources:
   - https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.4/manifests/install.yaml
   - httproute.yaml
 
-# images:
-#   - name: ghcr.io/dexidp/dex
-#     newName: harbor.example.com/ghcr.io/dexidp/dex
-#   - name: public.ecr.aws/docker/library/redis
-#     newName: harbor.example.com/public.ecr.aws/docker/library/redis
-#   - name: quay.io/argoproj/argocd
-#     newName: harbor.example.com/quay.io/argoproj/argocd
+images:
+  - name: ghcr.io/dexidp/dex
+    newName: nexus.k0s.localhost:30443/ghcr.io/dexidp/dex
+  - name: public.ecr.aws/docker/library/redis
+    newName: nexus.k0s.localhost:30443/public.ecr.aws/docker/library/redis
+  - name: quay.io/argoproj/argocd
+    newName: nexus.k0s.localhost:30443/quay.io/argoproj/argocd
 
 patches:
   # admin.password: password | bcrypt | base64
@@ -32,6 +32,7 @@ patches:
         admin.password: JDJiJDEwJFlqL3dMb1ZVRmZPN1BiTWtDSGtmTXVOblBra3ZtVlZLdFRTVTFQUnFIS1d2enhVMFNmVndL
         admin.passwordMtime: MTk3MC0wMS0wMVQwMDowMDowMFVUQw==
         accounts.radar.tokens: W3siaWQiOiJib290c3RyYXAiLCJpYXQiOjB9XQ==
+
   - patch: |
       apiVersion: v1
       kind: ConfigMap
@@ -39,6 +40,7 @@ patches:
         name: argocd-cmd-params-cm
       data:
         server.insecure: "true"
+
   - patch: |
       apiVersion: v1
       kind: ConfigMap
@@ -48,6 +50,7 @@ patches:
         exec.enabled: "true"
         accounts.radar: apiKey
         kustomize.buildOptions: "--enable-helm"
+
   - patch: |
       apiVersion: v1
       kind: ConfigMap
@@ -56,4 +59,21 @@ patches:
       data:
         policy.csv: |
           g, radar, role:readonly
+
+replacements:
+  - sourceValue: IfNotPresent
+    targets:
+      - select:
+          kind: Deployment
+        fieldPaths:
+          - spec.template.spec.containers.*.imagePullPolicy
+      - select:
+          kind: StatefulSet
+        fieldPaths:
+          - spec.template.spec.containers.*.imagePullPolicy
+      - select:
+          kind: Deployment
+          name: argocd-dex-server
+        fieldPaths:
+          - spec.template.spec.initContainers.*.imagePullPolicy
 

@@ -3,6 +3,13 @@ resource "sonatyperepo_security_realms" "realms" {
   active = var.active_realms
 }
 
+# Anonymous Access
+resource "sonatyperepo_system_anonymous_access" "anonymous_access" {
+  enabled    = true
+  realm_name = "NexusAuthorizingRealm"
+  user_id    = "anonymous"
+}
+
 # OCI Proxy Repositories (named after upstream registry domains)
 resource "sonatyperepo_repository_oci_proxy" "oci_proxies" {
   for_each = var.oci_proxies

@@ -1,27 +1,33 @@
 image:
-  repository: docker.io/rook/ceph
+  repository: nexus.k0s.localhost:30443/docker.io/rook/ceph
+
+ceph-csi-operator:
+  controllerManager:
+    manager:
+      image:
+        repository: nexus.k0s.localhost:30443/quay.io/cephcsi/ceph-csi-operator
 
 allowLoopDevices: true
 
 csi:
   cephcsi:
-    repository: quay.io/cephcsi/cephcsi
+    repository: nexus.k0s.localhost:30443/quay.io/cephcsi/cephcsi
 
   registrar:
-    repository: registry.k8s.io/sig-storage/csi-node-driver-registrar
+    repository: nexus.k0s.localhost:30443/registry.k8s.io/sig-storage/csi-node-driver-registrar
 
   provisioner:
-    repository: registry.k8s.io/sig-storage/csi-provisioner
+    repository: nexus.k0s.localhost:30443/registry.k8s.io/sig-storage/csi-provisioner
 
   snapshotter:
-    repository: registry.k8s.io/sig-storage/csi-snapshotter
+    repository: nexus.k0s.localhost:30443/registry.k8s.io/sig-storage/csi-snapshotter
 
   attacher:
-    repository: registry.k8s.io/sig-storage/csi-attacher
+    repository: nexus.k0s.localhost:30443/registry.k8s.io/sig-storage/csi-attacher
 
   resizer:
-    repository: registry.k8s.io/sig-storage/csi-resizer
+    repository: nexus.k0s.localhost:30443/registry.k8s.io/sig-storage/csi-resizer
 
   csiAddons:
-    repository: quay.io/csiaddons/k8s-sidecar
+    repository: nexus.k0s.localhost:30443/quay.io/csiaddons/k8s-sidecar
 

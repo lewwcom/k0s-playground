@@ -11,8 +11,7 @@ statefulset:
   replicaCount: 1
   container:
     image:
-      # repository: harbor.example.com/docker.io/sonatype/nexus3
-      repository: docker.io/sonatype/nexus3
+      repository: nexus.k0s.localhost:30443/docker.io/sonatype/nexus3
       nexusTag: 3.97.1
     resources:
       requests:

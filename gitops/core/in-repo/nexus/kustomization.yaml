@@ -39,7 +39,7 @@ patches:
           spec:
             initContainers:
               - name: wait-for-postgres
-                image: ghcr.io/cloudnative-pg/postgresql:16
+                image: nexus.k0s.localhost:30443/ghcr.io/cloudnative-pg/postgresql:16
                 env:
                   - name: PGHOST
                     value: "postgres-nexus-rw"
@@ -87,4 +87,9 @@ patches:
                       -Dnexus.datastore.nexus.jdbcUrl=jdbc:postgresql://${DB_HOST}:5432/${DB_NAME}
                       -Dnexus.datastore.nexus.username=${DB_USER}
                       -Dnexus.datastore.nexus.password=${DB_PASSWORD}
+
+images:
+  - name: busybox
+    newName: nexus.k0s.localhost:30443/docker.io/library/busybox
+    newTag: 1.33.1
 

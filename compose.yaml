@@ -32,6 +32,9 @@ services:
         privileged: true
     hostname: k0s-controller
     network_mode: bridge # other modes are unsupported
+    extra_hosts:
+      - "nexus.k0s.localhost:127.0.0.1"
+      - "nexus.k0s.host.docker.internal:127.0.0.1"
     ports:
       - 6443:6443 # publish the Kubernetes API server port
       - 30080:30080 # HTTP ingress 

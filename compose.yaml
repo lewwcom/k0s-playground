@@ -77,12 +77,14 @@ services:
     extra_hosts:
       - "argocd.k0s.localhost:host-gateway"
       - "ceph.k0s.localhost:host-gateway"
+      - "crossview.k0s.localhost:host-gateway"
       - "gogs.k0s.localhost:host-gateway"
       - "nexus.k0s.localhost:host-gateway"
       - "radar.k0s.localhost:host-gateway"
 
       - "argocd.k0s.host.docker.internal:host-gateway"
       - "ceph.k0s.host.docker.internal:host-gateway"
+      - "crossview.k0s.host.docker.internal:host-gateway"
       - "gogs.k0s.host.docker.internal:host-gateway"
       - "nexus.k0s.host.docker.internal:host-gateway"
       - "radar.k0s.host.docker.internal:host-gateway"

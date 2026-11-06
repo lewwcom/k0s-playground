@@ -1,0 +1,2 @@
+image:
+  repository: nexus.k0s.localhost:30443/docker.io/crossplane/crossplane

@@ -1,0 +1,38 @@
+global:
+  namespace: crossplane
+
+image:
+  repository: nexus.k0s.localhost:30443/ghcr.io/crossplane-contrib/crossview
+
+gatewayAPI:
+  enabled: true
+  httpRoute:
+    apiVersion: gateway.networking.k8s.io/v1
+    parentRefs:
+      - group: gateway.networking.k8s.io
+        kind: Gateway
+        name: kgateway-proxy
+        namespace: kgateway
+    hostnames:
+      - crossview.k0s.localhost
+      - crossview.k0s.host.docker.internal
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /
+
+database:
+  enabled: false
+
+config:
+  database:
+    enabled: false
+  server:
+    auth:
+      mode: none
+
+secrets:
+  adminUsername: "admin"
+  adminPassword: "password"
+

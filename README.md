@@ -5,6 +5,7 @@ Docker and bootstraps it with a GitOps stack:
 
 - [ArgoCD](https://argo-cd.readthedocs.io/) for continuous delivery;
 - [Gogs](https://gogs.io/) as an in-cluster Git remote that ArgoCD syncs from;
+- [Crossplane](https://www.crossplane.io) to manage non-K8s resources;
 - [Radar](https://radarhq.io/) as K8s UI;
 - [Kgateway](https://kgateway.dev/) as the Gateway API ingress, and;
 - [Nexus](https://www.sonatype.com/products/nexus-community-edition-download) as
@@ -155,12 +156,14 @@ services:
     extra_hosts:
       - "argocd.k0s.localhost:host-gateway"
       - "ceph.k0s.localhost:host-gateway"
+      - "crossview.k0s.localhost:host-gateway"
       - "gogs.k0s.localhost:host-gateway"
       - "nexus.k0s.localhost:host-gateway"
       - "radar.k0s.localhost:host-gateway"
 
       - "argocd.k0s.host.docker.internal:host-gateway"
       - "ceph.k0s.host.docker.internal:host-gateway"
+      - "crossview.k0s.host.docker.internal:host-gateway"
       - "gogs.k0s.host.docker.internal:host-gateway"
       - "nexus.k0s.host.docker.internal:host-gateway"
       - "radar.k0s.host.docker.internal:host-gateway"

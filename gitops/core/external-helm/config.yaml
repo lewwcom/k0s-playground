@@ -40,3 +40,17 @@ apps:
     revision: 0.29.1
     values: cloudnative-pg.values.yaml
 
+  - name: crossplane
+    namespace: crossplane
+    repo: https://charts.crossplane.io/stable
+    chart: crossplane
+    revision: 2.4.3
+    values: crossplane.values.yaml
+
+  - name: crossview
+    namespace: crossplane
+    repo: ghcr.io/crossplane-contrib/crossview-chart
+    chart: crossview
+    revision: 4.7.0
+    values: crossview.values.yaml
+

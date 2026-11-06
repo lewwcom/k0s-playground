@@ -103,6 +103,7 @@ main() {
 - ArgoCD: https://argocd.k0s.localhost:30443 or http://argocd.k0s.localhost:30080 (admin:password)
 - Gogs: https://gogs.k0s.localhost:30443 or http://gogs.k0s.localhost:30080 (gogs-admin:password)
 - Ceph: https://ceph.k0s.localhost:30443 or http://ceph.k0s.localhost:30080 (admin:password)
+- Crossview: https://crossview.k0s.localhost:30443 or http://crossview.k0s.localhost:30080
 - Nexus: https://nexus.k0s.localhost:30443 or http://nexus.k0s.localhost:30080 (admin:password)
 - Radar: https://radar.k0s.localhost:30443 or http://radar.k0s.localhost:30080
 

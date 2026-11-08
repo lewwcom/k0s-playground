@@ -1,0 +1,129 @@
+x-volumes: &x-volumes
+  volumeMounts:
+    - name: postgres-creds
+      mountPath: /postgres-creds
+      readOnly: true
+
+  volumes:
+    - name: postgres-creds
+      secret:
+        secretName: &postgres-secret postgres-authentik-app
+
+global:
+  image:
+    repository: nexus.k0s.localhost:30443/ghcr.io/goauthentik/server
+
+authentik:
+  # openssl rand -base64 60 | tr -d '\n'
+  secret_key: "F/HI0AliHhN4NWEaoUaWua/lCWGU/rrlDrgNeJanZbOfHvgsIPg0Gh5apAtwwgvuHHvwzWfInIoYqqtD"
+  # docker run -it --rm -e AUTHENTIK_SECRET_KEY='<secret>' \
+  #   --entrypoint 'python' ghcr.io/goauthentik/server:2026.8.5 -c '
+  #     from authentik.root.setup
+  #     import setup; setup();
+  #     import django; django.setup();
+  #     from django.core.management import call_command;
+  #     call_command("hash_password")
+  #   '
+  bootstrap_password_hash: "pbkdf2_sha256$1000000$qsyLa6bAiIHFq6S2D4hcJW$QyTDuk3TeSNGCvLD9fEENGfKSlMapPvq4D8Me6SStJs="
+  bootstrap_token: "token"
+  bootstrap_email: "admin@acme.local"
+
+  outposts:
+    # -- Template used for managed outposts. The following placeholders can be used
+    # %(type)s - the type of the outpost
+    # %(version)s - version of your authentik install
+    # %(build_hash)s - only for beta versions, the build hash of the image
+    container_image_base: nexus.k0s.localhost:30443/ghcr.io/goauthentik/%(type)s:%(version)s
+
+  postgresql:
+    host: &postgres-host postgres-authentik-rw
+    name: &postgres-db authentik
+    port: &postgres-port "5432"
+    user: file:///postgres-creds/username
+    password: file:///postgres-creds/password
+
+server:
+  <<: *x-volumes
+
+  initContainers:
+    - name: wait-for-postgres
+      image: &postgres-image nexus.k0s.localhost:30443/ghcr.io/cloudnative-pg/postgresql:16
+      env:
+        - name: PGHOST
+          value: *postgres-host
+        - name: PGPORT
+          value: *postgres-port
+        - name: PGDATABASE
+          value: *postgres-db
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: *postgres-secret
+              key: username
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: *postgres-secret
+              key: password
+        - name: PGCONNECT_TIMEOUT
+          value: "5"
+      command:
+        - sh
+        - -c
+        - |
+          echo "Waiting for PostgreSQL to be ready..."
+          until psql -c "SELECT 1;" > /dev/null 2>&1; do
+            echo "PostgreSQL is unavailable - sleeping 2s"
+            sleep 2
+          done
+          echo "PostgreSQL is ready!"
+      resources:
+        requests:
+          cpu: 50m
+          memory: 64Mi
+        limits:
+          cpu: 100m
+          memory: 128Mi
+
+  route:
+    main:
+      enabled: true
+      hostnames:
+        - authentik.k0s.localhost
+        - authentik.k0s.host.docker.internal
+
+      parentRefs:
+        - group: gateway.networking.k8s.io
+          kind: Gateway
+          name: kgateway-proxy
+          namespace: kgateway
+
+      matches:
+        - path:
+            type: PathPrefix
+            value: "{{ .Values.authentik.web.path }}"
+
+worker:
+  <<: *x-volumes
+
+additionalObjects:
+  - apiVersion: postgresql.cnpg.io/v1
+    kind: Cluster
+    metadata:
+      name: postgres-authentik
+    spec:
+      instances: 1
+      imageName: *postgres-image
+      podSecurityContext:
+        # Skip recursive chown/chmod on mount
+        fsGroupChangePolicy: "OnRootMismatch"
+        # Default CNPG UID
+        fsGroup: 26
+      storage:
+        storageClass: loop-rook-cephfs
+        size: 1Gi
+      bootstrap:
+        initdb:
+          database: *postgres-db
+          owner: authentik
+

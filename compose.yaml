@@ -76,12 +76,14 @@ services:
       DOCKER_STEPCA_INIT_ACME: "true"
     extra_hosts:
       - "argocd.k0s.localhost:host-gateway"
+      - "authentik.k0s.localhost:host-gateway"
       - "ceph.k0s.localhost:host-gateway"
       - "gogs.k0s.localhost:host-gateway"
       - "nexus.k0s.localhost:host-gateway"
       - "radar.k0s.localhost:host-gateway"
 
       - "argocd.k0s.host.docker.internal:host-gateway"
+      - "authentik.k0s.host.docker.internal:host-gateway"
       - "ceph.k0s.host.docker.internal:host-gateway"
       - "gogs.k0s.host.docker.internal:host-gateway"
       - "nexus.k0s.host.docker.internal:host-gateway"

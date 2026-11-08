@@ -40,3 +40,9 @@ apps:
     revision: 0.29.1
     values: cloudnative-pg.values.yaml
 
+  - name: authentik
+    repo: https://charts.goauthentik.io
+    chart: authentik
+    revision: 2026.8.5
+    values: authentik.values.yaml
+

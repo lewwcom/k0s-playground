@@ -15,11 +15,13 @@ tls:
   acmeServer: https://host.docker.internal:9000/acme/acme/directory
   dnsNames:
     - argocd.k0s.localhost
+    - authentik.k0s.localhost
     - ceph.k0s.localhost
     - gogs.k0s.localhost
     - nexus.k0s.localhost
     - radar.k0s.localhost
     - argocd.k0s.host.docker.internal
+    - authentik.k0s.host.docker.internal
     - ceph.k0s.host.docker.internal
     - gogs.k0s.host.docker.internal
     - nexus.k0s.host.docker.internal

@@ -60,6 +60,7 @@ Once it finishes, the stack is reachable at:
 - ArgoCD: <https://argocd.k0s.localhost:30443> or <http://argocd.k0s.localhost:30080> (`admin:password`)
 - Gogs: <https://gogs.k0s.localhost:30443> or <http://gogs.k0s.localhost:30080> (`gogs-admin:password`)
 - Ceph: <https://ceph.k0s.localhost:30443> or <http://ceph.k0s.localhost:30080> (`admin:password`)
+- Authentik: <https://authentik.k0s.localhost:30443> or <http://authentik.k0s.localhost:30080> (`akadmin:password`)
 - Nexus: <https://nexus.k0s.localhost:30443> or <http://nexus.k0s.localhost:30080> (`admin:password`)
 - Radar: <https://radar.k0s.localhost:30443> or <http://radar.k0s.localhost:30080>
 
@@ -154,12 +155,14 @@ services:
       DOCKER_STEPCA_INIT_ACME: "true"
     extra_hosts:
       - "argocd.k0s.localhost:host-gateway"
+      - "authentik.k0s.localhost:host-gateway"
       - "ceph.k0s.localhost:host-gateway"
       - "gogs.k0s.localhost:host-gateway"
       - "nexus.k0s.localhost:host-gateway"
       - "radar.k0s.localhost:host-gateway"
 
       - "argocd.k0s.host.docker.internal:host-gateway"
+      - "authentik.k0s.host.docker.internal:host-gateway"
       - "ceph.k0s.host.docker.internal:host-gateway"
       - "gogs.k0s.host.docker.internal:host-gateway"
       - "nexus.k0s.host.docker.internal:host-gateway"

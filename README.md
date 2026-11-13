@@ -116,8 +116,10 @@ services:
     hostname: k0s-controller
     network_mode: bridge
     extra_hosts:
-      - "nexus.k0s.localhost:127.0.0.1"
-      - "nexus.k0s.host.docker.internal:127.0.0.1"
+      - "nexus.k0s.localhost:host-gateway"
+      - "nexus.k0s.host.docker.internal:host-gateway"
+      - "authentik.k0s.localhost:host-gateway"
+      - "authentik.k0s.host.docker.internal:host-gateway"
     ports:
       - 6443:6443   # Kubernetes API
       - 30080:30080 # HTTP ingress

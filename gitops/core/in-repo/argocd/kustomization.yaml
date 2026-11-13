@@ -47,9 +47,19 @@ patches:
       metadata:
         name: argocd-cm
       data:
+        # Must define to support OIDC
+        url: http://argocd.k0s.localhost:30080
+        additionalUrls: https://argocd.k0s.localhost:30443
+
         exec.enabled: "true"
         accounts.radar: apiKey
         kustomize.buildOptions: "--enable-helm"
+
+        oidc.config: |
+          name: Authentik
+          issuer: http://authentik.k0s.localhost:30080/application/o/argo-cd/
+          clientID: argocd
+          clientSecret: client-secret
 
   - patch: |
       apiVersion: v1
@@ -59,6 +69,7 @@ patches:
       data:
         policy.csv: |
           g, radar, role:readonly
+          g, authentik Admins, role:admin
 
 replacements:
   - sourceValue: IfNotPresent

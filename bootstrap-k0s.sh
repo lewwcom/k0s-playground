@@ -94,6 +94,11 @@ main() {
 
     setup_nexus
 
+    until make APP=authentik wait-argocd-app; do :; done
+    print_headline "Apply OpenTofu configuration for Authentik"
+    tofu -chdir=gitops/core/external-helm/authentik/opentofu init
+    tofu -chdir=gitops/core/external-helm/authentik/opentofu apply -auto-approve
+
     if command -v step > /dev/null 2>&1 || command -v step.exe > /dev/null 2>&1; then
         make trust-ca
     fi

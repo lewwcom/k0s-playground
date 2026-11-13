@@ -1,0 +1,3 @@
+authentik_url      = "http://authentik.k0s.localhost:30080"
+authentik_token    = "token"
+authentik_insecure = false

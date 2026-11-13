@@ -14,4 +14,56 @@ spec:
     provider: custom
     kubeProxy:
       disabled: true
+    coreDNS:
+      # CoreDNS to read node's /etc/hosts
+      patches:
+        - target:
+            kind: Deployment
+            name: coredns
+            namespace: kube-system
+          patch:
+            type: StrategicMergePatch
+            content: |
+              spec:
+                template:
+                  spec:
+                    containers:
+                      - name: coredns
+                        volumeMounts:
+                          - name: node-etc-hosts
+                            mountPath: /etc/node.hosts
+                            readOnly: true
+                    volumes:
+                      - name: node-etc-hosts
+                        hostPath:
+                          type: File
+                          path: /etc/hosts
+        - target:
+            kind: ConfigMap
+            name: coredns
+            namespace: kube-system
+          patch:
+            type: StrategicMergePatch
+            content: |
+              data:
+                Corefile: |
+                  .:53 {
+                      errors
+                      health
+                      ready
+                      hosts /etc/node.hosts {
+                        fallthrough
+                      }
+                      kubernetes cluster.local in-addr.arpa ip6.arpa {
+                        pods insecure
+                        ttl 30
+                        fallthrough in-addr.arpa ip6.arpa
+                      }
+                      prometheus :9153
+                      forward . /etc/resolv.conf
+                      cache 30
+                      loop
+                      reload
+                      loadbalance
+                  }
 
